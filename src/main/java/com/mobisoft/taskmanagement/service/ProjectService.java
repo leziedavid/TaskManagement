@@ -329,7 +329,7 @@ public class ProjectService {
 
         return project;
 
-    }
+    } 
     
 
     public ProjetDetailsDTO getProjetDetails(String projectCodes) {
