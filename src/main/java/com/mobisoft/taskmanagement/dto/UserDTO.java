@@ -1,22 +1,26 @@
 package com.mobisoft.taskmanagement.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.mobisoft.taskmanagement.entity.Gender;
+import com.mobisoft.taskmanagement.validation.annotation.ValidEnum;
+
 import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
-import com.mobisoft.taskmanagement.entity.Gender;
-// import jakarta.validation.constraints.NotNull;
-import com.mobisoft.taskmanagement.validation.annotation.ValidEnum;
 // import java.time.LocalDate;
 
 @Data
+@JsonInclude(JsonInclude.Include.NON_NULL)
+@JsonIgnoreProperties(ignoreUnknown = true)
+
 public class UserDTO {
-    // private Long userId;
-
+    private Long userId;
+    
     @NotBlank(message = "Le nom ne peut pas être vide ou nul")
+    
     private String lastname;
-
     @NotBlank(message = "Le prénom ne peut pas être vide ou nul")
     private String firstname;
-
     @NotBlank(message = "L'email ne peut pas être vide ou nul")
     private String email;
 
@@ -31,12 +35,10 @@ public class UserDTO {
 
     @NotBlank(message = "La fonction ne peut pas être vide ou nul")
     private String fonction;
+    
+    private String response;
 
     @ValidEnum(enumClass = Gender.class, message = "Le genre ne peut pas être vide ou nul")
-    // @NotNull(message = "Le genre ne peut pas être vide ou nul")
     private String genre;
-
-    // private OffsetDateTime usersCreatedAt = OffsetDateTime.now();
-    // private OffsetDateTime usersUpdatedAt = OffsetDateTime.now();
 
 }

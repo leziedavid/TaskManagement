@@ -13,7 +13,7 @@ import java.util.List;
 
 @RestController
 @Validated
-@RequestMapping("/api/actions")
+@RequestMapping("/api/v1/actions")
 public class ActionController {
 
     @Autowired

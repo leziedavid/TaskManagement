@@ -7,6 +7,8 @@ import lombok.Data;
 import java.time.OffsetDateTime;
 import java.util.Set;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
+
 @Entity
 @Table(name = "permissions")
 @Data
@@ -17,7 +19,9 @@ public class Permission {
 
     private String permissionName;
 
+        @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ssZ")
     private OffsetDateTime permissionCreatedAt = OffsetDateTime.now();
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ssZ")
     private OffsetDateTime permissionUpdatedAt = OffsetDateTime.now();
 
     @ManyToMany(mappedBy = "permissions")

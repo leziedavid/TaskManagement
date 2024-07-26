@@ -1,9 +1,21 @@
 package com.mobisoft.taskmanagement.entity;
 
-import jakarta.persistence.*;
-import lombok.Data;
-
 import java.time.OffsetDateTime;
+import java.util.Set;
+
+import com.fasterxml.jackson.annotation.JsonFormat;
+
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinTable;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.Table;
+import lombok.Data;
 
 @Entity
 @Table(name = "observations")
@@ -12,11 +24,11 @@ public class Observation {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long observationId;
-
     private String libelle;
     private String description;
-    private String file;
-    private OffsetDateTime observationCreatedAt = OffsetDateTime.now();
+    
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ssZ")
+    private OffsetDateTime observationCreatedAt;
 
     @ManyToOne
     @JoinColumn(name = "task_id")
@@ -25,4 +37,16 @@ public class Observation {
     @ManyToOne
     @JoinColumn(name = "user_id")
     private User user;
+
+    @OneToMany
+    @JoinTable(name = "observation_filesData",
+        joinColumns = @JoinColumn(name = "observation_id"),
+        inverseJoinColumns = @JoinColumn(name = "filesData_id")
+    )
+    private Set<FilesData> filesData;
+
+    @PrePersist
+    protected void onCreate() {
+        observationCreatedAt = OffsetDateTime.now();
+    }
 }

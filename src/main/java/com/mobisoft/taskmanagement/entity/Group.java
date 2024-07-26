@@ -6,6 +6,8 @@ import lombok.Data;
 import java.time.OffsetDateTime;
 import java.util.Set;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
+
 @Entity
 @Table(name = "groups")
 @Data
@@ -16,7 +18,9 @@ public class Group {
 
     private String groupName;
 
+        @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ssZ")
     private OffsetDateTime groupCreatedAt = OffsetDateTime.now();
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ssZ")
     private OffsetDateTime groupUpdatedAt = OffsetDateTime.now();
 
     @ManyToMany

@@ -13,7 +13,7 @@ import java.util.List;
 
 @RestController
 @Validated
-@RequestMapping("/api/permissions")
+@RequestMapping("/api/v1/permissions")
 public class PermissionController {
 
     @Autowired

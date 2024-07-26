@@ -1,4 +1,4 @@
-package com.mobisoft.taskmanagement.utils;
+package com.mobisoft.taskmanagement.util;
 
 public class HttpRequestStatus {
 

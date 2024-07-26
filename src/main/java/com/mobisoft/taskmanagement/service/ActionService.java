@@ -1,5 +1,12 @@
 package com.mobisoft.taskmanagement.service;
 
+import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
 import com.mobisoft.taskmanagement.dto.ActionDTO;
 import com.mobisoft.taskmanagement.entity.Action;
 import com.mobisoft.taskmanagement.entity.Task;
@@ -7,13 +14,8 @@ import com.mobisoft.taskmanagement.entity.User;
 import com.mobisoft.taskmanagement.repository.ActionRepository;
 import com.mobisoft.taskmanagement.repository.TaskRepository;
 import com.mobisoft.taskmanagement.repository.UserRepository;
-import jakarta.persistence.EntityNotFoundException;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
 
-import java.util.List;
-import java.util.Optional;
-import java.util.stream.Collectors;
+import jakarta.persistence.EntityNotFoundException;
 
 @Service
 public class ActionService {
@@ -64,7 +66,7 @@ public class ActionService {
 
     private ActionDTO convertToDTO(Action action) {
         ActionDTO actionDTO = new ActionDTO();
-        actionDTO.setActionId(action.getTaskActionId());
+        actionDTO.setActionId(action.getActionId());
         actionDTO.setDescription(action.getDescription());
         actionDTO.setHours(action.getHours());
         actionDTO.setTaskId(action.getTask().getTaskId());
@@ -104,7 +106,7 @@ public class ActionService {
 
         if (actionDTO.getUserId() != null) {
             User user = userRepository.findById(actionDTO.getUserId())
-                    .orElseThrow(() -> new EntityNotFoundException("L'utilisateur avec l'ID spécifié n'existe pas"));
+                .orElseThrow(() -> new EntityNotFoundException("L'utilisateur avec l'ID spécifié n'existe pas"));
             action.setUser(user);
         }
     }

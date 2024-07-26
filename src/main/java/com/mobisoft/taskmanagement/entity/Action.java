@@ -1,17 +1,24 @@
 package com.mobisoft.taskmanagement.entity;
 
-import jakarta.persistence.*;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
 import lombok.Data;
-
 @Entity
-@Table(name = "task_actions")
+@Table(name = "actions")
 @Data
 public class Action {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long taskActionId;
+    private Long actionId;
     private String description;
+
+    
     private int hours;
 
     @ManyToOne

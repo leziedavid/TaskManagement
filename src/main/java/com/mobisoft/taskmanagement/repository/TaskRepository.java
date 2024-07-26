@@ -10,6 +10,9 @@ import java.util.List;
 @Repository
 public interface TaskRepository extends JpaRepository<Task, Long> {
 
+
+    List<Task> findByProjectProjectId(Long projectId);
+
     @Query(value = "SELECT * FROM tasks WHERE project_id = ?1", nativeQuery = true)
     List<Task> findTasksByProjectId(Long projectId);
 
