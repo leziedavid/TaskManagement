@@ -20,8 +20,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.mobisoft.taskmanagement.entity.FilesData;
+import com.mobisoft.taskmanagement.entity.Observation;
 import com.mobisoft.taskmanagement.entity.Project;
 import com.mobisoft.taskmanagement.repository.FilesDataRepository;
+import com.mobisoft.taskmanagement.repository.ObservationRepository;
 import com.mobisoft.taskmanagement.repository.ProjectRepository;
 
 import jakarta.persistence.EntityNotFoundException;
@@ -40,7 +42,8 @@ public class FileStorageService {
     @Autowired
     private ProjectRepository projectRepository;
 
-
+    @Autowired
+    private ObservationRepository observationRepository;
 
     public String uploadFileWithTitle(MultipartFile file, String title) throws IOException {
         
@@ -171,6 +174,13 @@ public class FileStorageService {
         FilesData filesData = filesDataRepository.findById(userId).orElseThrow(() -> new EntityNotFoundException("Le fichier avec l'ID spécifié n'existe pas"));
         project.getFilesData().add(filesData);
         projectRepository.save(project);
+    }
+
+    public void assignFilesToObservation(Long observationId, Long userId) {
+        Observation observation = observationRepository.findById(observationId).orElseThrow(() -> new EntityNotFoundException("L'observation avec l'ID spécifié n'existe pas"));
+        FilesData filesData = filesDataRepository.findById(userId).orElseThrow(() -> new EntityNotFoundException("Le fichier avec l'ID spécifié n'existe pas"));
+        observation.getFilesData().add(filesData);
+        observationRepository.save(observation);
     }
 
 }

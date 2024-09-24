@@ -7,9 +7,7 @@ import java.util.stream.Collectors;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
-import org.springframework.security.web.firewall.RequestRejectedException;
 import org.springframework.validation.FieldError;
-import org.springframework.web.ErrorResponse;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -19,7 +17,10 @@ import com.fasterxml.jackson.databind.JsonMappingException;
 import com.mobisoft.taskmanagement.dto.BaseResponse;
 
 import jakarta.persistence.EntityNotFoundException;
+import jakarta.persistence.PersistenceException;
 import lombok.extern.slf4j.Slf4j;
+
+import com.mobisoft.taskmanagement.exception.EmailAlreadyExistsException; // Import de l'exception personnalisée
 
 @Slf4j
 @RestControllerAdvice
@@ -84,18 +85,10 @@ public ResponseEntity<Object> handleHttpMessageNotReadableException(HttpMessageN
     }
 
 
-    // @ExceptionHandler(RequestRejectedException.class)
-    // public ResponseEntity<Object> handleRequestRejectedException(RequestRejectedException ex) {
-    //     log.error("Exception non gérée interceptée: {}", ex.getMessage(), ex);
-    //     BaseResponse<Object> response = new BaseResponse<>(HttpStatus.NOT_FOUND.value(), "Requête rejetée :" + ex.getMessage(), null);
-    //     return new ResponseEntity<>(response, HttpStatus.NOT_FOUND);
-    // }
-
      // Gestion des autres exceptions non spécifiques...
-        @ExceptionHandler(value = {Exception.class})
-        public ResponseEntity<Object> handleAllOtherExceptions(Exception ex, WebRequest request) {
+@ExceptionHandler(value = {Exception.class})
+    public ResponseEntity<Object> handleAllOtherExceptions(Exception ex, WebRequest request) {
             log.error("Exception non gérée interceptée: {} , Classe d'exception: {}", ex.getLocalizedMessage(), ex.getClass().toGenericString());
-
             Map<String, String> errors = new HashMap<>();
             errors.put("message", ex.getMessage());
 
@@ -106,6 +99,43 @@ public ResponseEntity<Object> handleHttpMessageNotReadableException(HttpMessageN
         }
 
 
-        
+@ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<Object> handleIllegalArgumentException(IllegalArgumentException ex) {
+    Map<String, String> errors = new HashMap<>();
+    errors.put("message", ex.getMessage());
+    BaseResponse<Object> response = new BaseResponse<>(HttpStatus.BAD_REQUEST.value(), "Argument invalide", errors);
+    return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+}
+
+
+
+    // Gestion de l'exception EmailAlreadyExistsException...
+    @ExceptionHandler(EmailAlreadyExistsException.class)
+    public ResponseEntity<Object> handleEmailAlreadyExistsException(EmailAlreadyExistsException ex) {
+        Map<String, String> errors = new HashMap<>();
+        errors.put("message", ex.getMessage());
+        BaseResponse<Map<String, String>> response = new BaseResponse<>(
+                HttpStatus.CONFLICT.value(), // Utilise 409 Conflict pour les erreurs de duplication
+                "L'email est déjà utilisé.",
+                errors);
+        return new ResponseEntity<>(response, HttpStatus.CONFLICT);
+    }
+
+
+@ExceptionHandler(PersistenceException.class)
+    public ResponseEntity<Object> handlePersistenceException(PersistenceException ex) {
+    Map<String, String> errors = new HashMap<>();
+    errors.put("message", ex.getMessage());
+    BaseResponse<Object> response = new BaseResponse<>(HttpStatus.INTERNAL_SERVER_ERROR.value(), "Erreur de persistance des données", errors);
+    return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
+}
+
+@ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<Object> handleIllegalStateException(IllegalStateException ex) {
+        Map<String, String> errors = new HashMap<>();
+        errors.put("message", ex.getMessage());
+        BaseResponse<Object> response = new BaseResponse<>(HttpStatus.BAD_REQUEST.value(), "État illégal", errors);
+        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+    }
 
 }

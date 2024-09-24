@@ -224,7 +224,7 @@ public class UserProjectService {
     }
 
 
-        public String updateProjectLeader(String projectId, Long currentLeaderId, Long newLeaderId) {
+    public String updateProjectLeader(String projectId, Long currentLeaderId, Long newLeaderId) {
 
             Project project = projectRepository.findByProjectCodes(projectId);
             Long IdProject = project.getProjectId();

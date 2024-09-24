@@ -20,8 +20,10 @@ public class FileStorageServiceController {
     @Autowired
     private FileStorageService fileStorageService;
 
-    @GetMapping("/{publicId}")
+    @GetMapping("/api/v1/{publicId}")
+    
     public ResponseEntity<Object> downloadFile(@PathVariable String publicId) throws FileNotFoundException {
+        System.out.println("bonjour");
         HttpHeaders headers = new HttpHeaders();
         InputStreamResource fileResource = fileStorageService.downloadFile(publicId, headers);
         return ResponseEntity.ok()
@@ -29,7 +31,5 @@ public class FileStorageServiceController {
         .body(fileResource);
         
     }
-
-    // BaseResponse<List<String>> response = new BaseResponse<>(HttpStatus.OK.value(), "Téléchargement terminé", uploadResults);
 
 }

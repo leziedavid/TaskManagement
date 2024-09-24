@@ -1,10 +1,7 @@
 package com.mobisoft.taskmanagement.dto;
 
-import java.time.OffsetDateTime;
-import java.util.List;
 
 import org.springframework.web.multipart.MultipartFile;
-
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.mobisoft.taskmanagement.entity.Priority;
@@ -12,13 +9,12 @@ import com.mobisoft.taskmanagement.entity.State;
 import com.mobisoft.taskmanagement.validation.annotation.ValidDate;
 import com.mobisoft.taskmanagement.validation.annotation.ValidEnum;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Lob;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 @Data
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonIgnoreProperties(ignoreUnknown = true)
+
 public class ProjectDTO {
     private Long projectId;
 

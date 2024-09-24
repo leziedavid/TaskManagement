@@ -2,23 +2,36 @@ package com.mobisoft.taskmanagement.service;
 
 
 import java.lang.reflect.Field;
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mobisoft.taskmanagement.dto.ProjectDTO;
+import com.mobisoft.taskmanagement.dto.ProjectWithTasksDTO;
 import com.mobisoft.taskmanagement.dto.ProjetDetailsDTO;
 import com.mobisoft.taskmanagement.dto.ProjetUsersDTO;
 import com.mobisoft.taskmanagement.dto.UserProjectDTO;
+import com.mobisoft.taskmanagement.dto.UserRoleDTO;
 import com.mobisoft.taskmanagement.entity.Priority;
 import com.mobisoft.taskmanagement.entity.Project;
+import com.mobisoft.taskmanagement.entity.Role;
 import com.mobisoft.taskmanagement.entity.State;
 import com.mobisoft.taskmanagement.entity.Task;
 import com.mobisoft.taskmanagement.entity.User;
@@ -27,7 +40,13 @@ import com.mobisoft.taskmanagement.repository.ProjectRepository;
 import com.mobisoft.taskmanagement.repository.TaskRepository;
 import com.mobisoft.taskmanagement.repository.UserProjectRepository;
 
+import com.mobisoft.taskmanagement.repository.UserRepository;
+import com.mobisoft.taskmanagement.entity.User;
+
 import jakarta.persistence.EntityNotFoundException;
+import jakarta.persistence.PersistenceException;
+
+
 
 @Service
 public class ProjectService {
@@ -44,12 +63,79 @@ public class ProjectService {
     @Autowired
     private TaskRepository taskRepository;
 
+    @Autowired
+    private UserRepository userRepository;
+
     ObjectMapper mapper = new ObjectMapper();
 
     @Autowired
     private FileStorageService fileStorageService;
 
+    @Autowired
+    private UserService userService; // Injection de UserService
+
     public ProjectDTO createProject(ProjectDTO projectDTO) {
+        
+    try {
+        // Convertir le DTO en entité et sauvegarder dans la base de données
+        Project project = convertToEntity(projectDTO);
+        Project savedProject = projectRepository.save(project);
+
+        // Créer une relation utilisateur-projet avec UserProjectService si des utilisateurs sont spécifiés
+        if (projectDTO.getUsers() != null) {
+            UserProjectDTO userProjectDTO = mapper.readValue(projectDTO.getUsers(), UserProjectDTO.class);
+            userProjectService.createUserProject(savedProject, userProjectDTO);
+        }
+
+        // Récupérer le nombre de fichiers à traiter (peut être 0)
+        int nbFiles = projectDTO.getNbfiles() != null ? Integer.parseInt(projectDTO.getNbfiles()) : 0;
+
+        // Traiter chaque fichier si présent
+        for (int i = 1; i <= nbFiles; i++) {
+            String fichiersFieldName = "fichiers" + i;
+            String titleFieldName = "title" + i;
+
+            try {
+                // Utilisation de la réflexion pour accéder aux champs MultipartFile et title
+                Field fichiersField = ProjectDTO.class.getDeclaredField(fichiersFieldName);
+                fichiersField.setAccessible(true);
+                MultipartFile file = (MultipartFile) fichiersField.get(projectDTO);
+
+                Field titleField = ProjectDTO.class.getDeclaredField(titleFieldName);
+                titleField.setAccessible(true);
+                String title = (String) titleField.get(projectDTO);
+
+                if (file != null && !file.isEmpty()) {
+                    // Gestion de l'upload du fichier et enregistrement dans la base de données
+                    String publicId = fileStorageService.uploadFileWithTitle(file, title);
+                    Long publicIdLong = Long.valueOf(publicId);
+                    fileStorageService.assignFilesToProject(savedProject.getProjectId(), publicIdLong);
+                }
+                
+            } catch (NoSuchFieldException | IllegalAccessException | NumberFormatException e) {
+                // Capturer et relancer une exception adaptée pour les erreurs de réflexion ou de conversion
+                throw new IllegalArgumentException("Erreur lors de la gestion des fichiers: " + e.getMessage(), e);
+            }
+        }
+
+        // Convertir l'entité sauvegardée en DTO et le retourner
+        return convertToDTO(savedProject);
+
+    } catch (DataAccessException e) {
+        // Capturer et relancer une exception spécifique pour les erreurs de base de données
+        throw new PersistenceException("Erreur lors de la création du projet en base de données: " + e.getMessage(), e);
+
+    } catch (JsonProcessingException e) {
+        // Capturer et relancer une exception spécifique pour les erreurs de désérialisation JSON
+        throw new IllegalArgumentException("Erreur lors de la désérialisation des utilisateurs: " + e.getMessage(), e);
+
+    } catch (Exception e) {
+        // Capturer et relancer une exception générale pour toutes les autres erreurs inattendues
+        throw new RuntimeException("Erreur inattendue lors de la création du projet: " + e.getMessage(), e);
+    }
+}
+
+    public ProjectDTO createProjectsx(ProjectDTO projectDTO) {
 
         try {
             
@@ -158,19 +244,73 @@ public class ProjectService {
         return convertToDTO(projectbyCodes);
     }
 
-    public List<ProjectDTO> findAllProjects() {
+    public List<ProjectDTO> findAllProjects(String token, int page, int size, String sortBy) {
+        
         try {
-            List<Project> projects = projectRepository.findAll();
-            return projects.stream().map(this::convertToDTO).collect(Collectors.toList());
+            // Obtenez les informations utilisateur à partir du token
+            UserRoleDTO userRoleDTO = userService.getUserRoleAndIdFromToken(token);
+
+            // Utilisez l'ID et le rôle de l'utilisateur comme nécessaire
+            Long userId = userRoleDTO.getUserId();
+            Role role = userRoleDTO.getRole();
+
+            // Créez un objet Pageable pour la pagination
+            // Pageable pageable = PageRequest.of(page, size, Sort.by(sortBy));
+            Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC,sortBy));
+            Pageable pageable2 = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC,"project_created_at"));
+
+            Page<Project> projectPage;
+
+            if (role == Role.USER) {
+                // Si le rôle est "User", obtenir les projets assignés à l'utilisateur
+                
+                projectPage = projectRepository.findAllProjectsByUserId(userId, pageable2);
+            } else {
+                // Sinon, obtenir tous les projets
+                projectPage = projectRepository.findAll(pageable);
+            }
+
+            // Convertir les entités en DTOs
+            return projectPage.getContent().stream().map(this::convertToDTO).collect(Collectors.toList());
+
         } catch (Exception e) {
             throw new RuntimeException("Erreur lors de la récupération de tous les projets: " + e.getMessage());
         }
     }
 
+    public List<ProjectDTO> findAllProjects1(String token) {
+        try {
+            // Obtenez les informations utilisateur à partir du token
+            UserRoleDTO userRoleDTO = userService.getUserRoleAndIdFromToken(token);
+
+            // Utilisez l'ID et le rôle de l'utilisateur comme nécessaire
+            Long userId = userRoleDTO.getUserId();
+            Role role = userRoleDTO.getRole();
+
+            System.out.println(userId);
+
+            List<Project> projects;
+
+            if (role == Role.USER) {
+                // Si le rôle est "User", obtenir les projets assignés à l'utilisateur
+                projects = projectRepository.findProjectsByUserId(userId);
+            } else {
+                // Sinon, obtenir tous les projets
+                projects = projectRepository.findAll();
+            }
+
+            // Convertir les entités en DTOs
+            return projects.stream().map(this::convertToDTO).collect(Collectors.toList());
+
+        } catch (Exception e) {
+            throw new RuntimeException("Erreur lors de la récupération de tous les projets: " + e.getMessage());
+        }
+    }
+
+
     public ProjectDTO updateProject(String projectId, ProjectDTO projectDTO) {
 
         Project project = projectRepository.findByProjectCodes(projectId);
-        // System.out.println(project);
 
         if (project == null) {
             throw new EntityNotFoundException("Le projet avec le code spécifié n'existe pas : " + projectId);
@@ -246,9 +386,9 @@ public class ProjectService {
         project.setStateColor(projectDTO.getStateColor());
         project.setProgress(projectDTO.getProgress());
 
-        LocalDate projectStartDate = LocalDate.parse(projectDTO.getProjectStartDate());
+        LocalDateTime projectStartDate = LocalDateTime.parse(projectDTO.getProjectStartDate());
         project.setProjectStartDate(projectStartDate);
-        LocalDate projectEndDate = LocalDate.parse(projectDTO.getProjectEndDate());
+        LocalDateTime projectEndDate = LocalDateTime.parse(projectDTO.getProjectEndDate());
         
         project.setProjectEndDate(projectEndDate);
         // Utilisation de CodeGenerator pour générer le code produit unique
@@ -258,7 +398,6 @@ public class ProjectService {
         project.setUser(user);
         return project;
     }
-
 
     private ProjectDTO convertToDTO(Project project) {
         
@@ -279,11 +418,11 @@ public class ProjectService {
 
         projectDTO.setUserId(project.getUser().getUserId());
 
-        LocalDate projectStartDate = project.getProjectStartDate();
+        LocalDateTime projectStartDate = project.getProjectStartDate();
         String projectStartDateAsString = projectStartDate.toString();
         projectDTO.setProjectStartDate(projectStartDateAsString);
 
-        LocalDate projectEndDate = project.getProjectEndDate();
+        LocalDateTime projectEndDate = project.getProjectEndDate();
         String projectEndDateAsString = projectEndDate.toString();
         projectDTO.setProjectEndDate(projectEndDateAsString);
 
@@ -293,6 +432,7 @@ public class ProjectService {
 
         OffsetDateTime projectUpdateDate = project.getProjectUpdatedAt();
         String projectUpdatedAtAsString = projectUpdateDate.toString();
+        
         projectDTO.setProjectUpdatedAt(projectUpdatedAtAsString);
 
         return projectDTO;
@@ -306,9 +446,9 @@ public class ProjectService {
         project.setProjectPriority(Priority.valueOf(projectDTO.getProjectPriority()));
         project.setProjectDescription(projectDTO.getProjectDescription());
 
-        LocalDate projectStartDate = LocalDate.parse(projectDTO.getProjectStartDate());
+        LocalDateTime projectStartDate = LocalDateTime.parse(projectDTO.getProjectStartDate());
         project.setProjectStartDate(projectStartDate);
-        LocalDate projectEndDate = LocalDate.parse(projectDTO.getProjectEndDate());
+        LocalDateTime projectEndDate = LocalDateTime.parse(projectDTO.getProjectEndDate());
         project.setProjectEndDate(projectEndDate);
     
         User user = new User();
@@ -320,19 +460,11 @@ public class ProjectService {
         project.setStateColor(projectDTO.getStateColor());
         project.setProgress(projectDTO.getProgress());
         project.setProjectUpdatedAt(OffsetDateTime.now()); // Mettre à jour la date de mise à jour
-
-        // // Conversion des dates depuis String vers OffsetDateTime
-        // OffsetDateTime projectCreatedAt = OffsetDateTime.parse(projectDTO.getProjectCreatedAt());
-        // project.setProjectCreatedAt(projectCreatedAt);
-        // OffsetDateTime projectUpdatedAt = OffsetDateTime.parse(projectDTO.getProjectUpdatedAt());
-        // project.setProjectUpdatedAt(projectUpdatedAt);
-
         return project;
-
-    } 
+    }
     
-
     public ProjetDetailsDTO getProjetDetails(String projectCodes) {
+        
         Project project = projectRepository.findByProjectCodes(projectCodes);
         if (project == null) {
             throw new EntityNotFoundException("Le projet avec le code spécifié n'existe pas : " + projectCodes);
@@ -376,6 +508,300 @@ public class ProjectService {
         userProjectService.assignUsersToProject(project, userProjectDTO);
 
     }
+
+    public List<User> getProjectUsersById(Long projectId) {
+
+        List<User> users =userProjectRepository.findUsersByProjectId(projectId);
+            if(users==null){
+            throw new EntityNotFoundException("Aucun resulta trouver avec l'id : " + projectId);
+            }
+        return users;
+
+    }
+
+    public List<ProjectDTO> findFilteredProjects(
+        Optional<Priority> projectPriority,
+        Optional<State> projectState,
+        Optional<Long> departmentId,
+        Optional<List<Long>> userIds,
+        Optional<int[]> progressRange,
+        Optional<LocalDateTime> projectStartDate,
+        Optional<LocalDateTime> projectEndDate,
+        String token,
+        int page,
+        int size) {
+
+    UserRoleDTO userRoleDTO = userService.getUserRoleAndIdFromToken(token);
+    Long userId = userRoleDTO.getUserId();
+    Role role = userRoleDTO.getRole();
+
+    List<Project> projects;
+
+    if (role == Role.USER) {
+        projects = projectRepository.findProjectsByUserId(userId);
+    } else {
+        projects = projectRepository.findAll();
+    }
+
+    // Appliquer les filtres sur les projets
+    List<Project> filteredProjects = projects.stream()
+        .filter(project -> projectPriority.map(p -> project.getProjectPriority() == p).orElse(true))
+        .filter(project -> projectState.map(s -> project.getProjectState() == s).orElse(true))
+        .filter(project -> departmentId.map(d -> project.getUser().getDepartments().stream()
+                .anyMatch(department -> department.getDepartmentId().equals(d))).orElse(true))
+        .filter(project -> userIds.map(
+                uIds -> project.getUser().getUserId() != null && uIds.contains(project.getUser().getUserId()))
+                .orElse(true))
+        .filter(project -> progressRange.map(range -> {
+            int start = range[0];
+            int end = range[1];
+            return project.getProgress() >= start && project.getProgress() <= end;
+        }).orElse(true))
+        .filter(project -> projectStartDate.map(s -> !project.getProjectStartDate().isBefore(s)).orElse(true))
+        .filter(project -> projectEndDate.map(e -> !project.getProjectEndDate().isAfter(e)).orElse(true))
+        .collect(Collectors.toList());
+
+    // Appliquer la pagination
+    int fromIndex = Math.min(page * size, filteredProjects.size());
+    int toIndex = Math.min(fromIndex + size, filteredProjects.size());
+    List<Project> paginatedProjects = filteredProjects.subList(fromIndex, toIndex);
+
+    // Convertit les projets filtrés et paginés en DTOs
+    return paginatedProjects.stream().map(this::convertToDTO).collect(Collectors.toList());
+}
+
+    public List<ProjectDTO> findFilteredProjects2(
+        Optional<Priority> projectPriority,
+        Optional<State> projectState,
+        Optional<Long> departmentId,
+        Optional<List<Long>> userIds,
+        Optional<Integer> progress,
+        Optional<LocalDateTime> projectStartDate,
+        Optional<LocalDateTime> projectEndDate,
+        String token,
+        int page,
+        int size) {
+
+        UserRoleDTO userRoleDTO = userService.getUserRoleAndIdFromToken(token);
+        Long userId = userRoleDTO.getUserId();
+        Role role = userRoleDTO.getRole();
+
+        List<Project> projects;
+
+        if (role == Role.USER) {
+            projects = projectRepository.findProjectsByUserId(userId);
+        } else {
+            projects = projectRepository.findAll();
+        }
+
+        // Appliquer les filtres sur les projets
+        List<Project> filteredProjects = projects.stream()
+            .filter(project -> projectPriority.map(p -> project.getProjectPriority() == p).orElse(true))
+            .filter(project -> projectState.map(s -> project.getProjectState() == s).orElse(true))
+            .filter(project -> departmentId.map(d -> project.getUser().getDepartments().stream()
+                    .anyMatch(department -> department.getDepartmentId().equals(d))).orElse(true))
+            .filter(project -> userIds.map(
+                    uIds -> project.getUser().getUserId() != null && uIds.contains(project.getUser().getUserId()))
+                    .orElse(true))
+            .filter(project -> progress.map(p -> project.getProgress() == p).orElse(true))
+            .filter(project -> projectStartDate.map(s -> !project.getProjectStartDate().isBefore(s)).orElse(true))
+            .filter(project -> projectEndDate.map(e -> !project.getProjectEndDate().isAfter(e)).orElse(true))
+            .collect(Collectors.toList());
+
+        // Appliquer la pagination
+        int fromIndex = Math.min(page * size, filteredProjects.size());
+        int toIndex = Math.min(fromIndex + size, filteredProjects.size());
+        List<Project> paginatedProjects = filteredProjects.subList(fromIndex, toIndex);
+
+        // Convertit les projets filtrés et paginés en DTOs
+        return paginatedProjects.stream().map(this::convertToDTO).collect(Collectors.toList());
+    }
+
+    public List<ProjectDTO> searchProjectsByName(
+        String projectName,
+        String token,
+        int page,
+        int size) {
+
+        UserRoleDTO userRoleDTO = userService.getUserRoleAndIdFromToken(token);
+        Long userId = userRoleDTO.getUserId();
+        Role role = userRoleDTO.getRole();
+
+        List<Project> projects;
+
+        if (role == Role.USER) {
+            // Si le rôle est "User", obtenir les projets assignés à l'utilisateur
+            projects = projectRepository.findProjectsByUserId(userId);
+        } else {
+            // Sinon, obtenir tous les projets
+            projects = projectRepository.findAll();
+        }
+
+        // Appliquer le filtre par nom de projet
+        List<Project> filteredProjects = projects.stream()
+                .filter(project -> projectName == null || project.getProjectName().toLowerCase().contains(projectName.toLowerCase()))
+                .collect(Collectors.toList());
+
+        // Appliquer la pagination
+        int fromIndex = Math.min(page * size, filteredProjects.size());
+        int toIndex = Math.min(fromIndex + size, filteredProjects.size());
+        List<Project> paginatedProjects = filteredProjects.subList(fromIndex, toIndex);
+
+        // Convertir les projets filtrés et paginés en DTOs
+        return paginatedProjects.stream().map(this::convertToDTO).collect(Collectors.toList());
+    }
+
+    public List<ProjectDTO> findFilteredProjects1(
+            Optional<Priority> projectPriority,
+            Optional<State> projectState,
+            Optional<Long> departmentId,
+            Optional<List<Long>> userIds, // Liste des IDs d'utilisateur
+            Optional<Integer> progress,
+            Optional<LocalDateTime> projectStartDate,
+            Optional<LocalDateTime> projectEndDate,
+            String token) {
+
+        UserRoleDTO userRoleDTO = userService.getUserRoleAndIdFromToken(token);
+        Long userId = userRoleDTO.getUserId();
+        Role role = userRoleDTO.getRole();
+
+        List<Project> projects;
+
+        if (role == Role.USER) {
+            // Si le rôle est "User", obtenir les projets assignés à l'utilisateur
+            projects = projectRepository.findProjectsByUserId(userId);
+        } else {
+            // Sinon, obtenir tous les projets
+            projects = projectRepository.findAll();
+        }
+
+        // Appliquer les filtres sur les projets
+        List<Project> filteredProjects = projects.stream()
+                // Filtre par priorité si elle est spécifiée
+                .filter(project -> projectPriority.map(p -> project.getProjectPriority() == p).orElse(true))
+                // Filtre par état si il est spécifié
+                .filter(project -> projectState.map(s -> project.getProjectState() == s).orElse(true))
+                // Filtre par département si il est spécifié
+                .filter(project -> departmentId.map(d -> project.getUser().getDepartments().stream()
+                        .anyMatch(department -> department.getDepartmentId().equals(d))).orElse(true))
+                // Filtre par utilisateur si il est spécifié
+                .filter(project -> userIds.map(
+                        uIds -> project.getUser().getUserId() != null && uIds.contains(project.getUser().getUserId()))
+                        .orElse(true))
+                // Filtre par progression si elle est spécifiée
+                .filter(project -> progress.map(p -> project.getProgress() == p).orElse(true))
+                // Filtre par date de début si elle est spécifiée
+                .filter(project -> projectStartDate.map(s -> !project.getProjectStartDate().isBefore(s)).orElse(true))
+                // Filtre par date de fin si elle est spécifiée
+                .filter(project -> projectEndDate.map(e -> !project.getProjectEndDate().isAfter(e)).orElse(true))
+                .collect(Collectors.toList()); // Collecte les projets filtrés en liste
+
+        // Convertit les projets filtrés en DTOs
+        return filteredProjects.stream().map(this::convertToDTO).collect(Collectors.toList());
+    }
+
+    // statistique des projet en fonction de l'utilisateur connecter :
+    public Map<String, Long> getProjectStatistics(String token) {
+        UserRoleDTO userRoleDTO = userService.getUserRoleAndIdFromToken(token);
+
+        Long userId = userRoleDTO.getUserId();
+        Role role = userRoleDTO.getRole();
+
+        List<Project> projects;
+
+        if (role == Role.USER) {
+            // Si le rôle est "User", obtenir les projets assignés à l'utilisateur
+            projects = projectRepository.findProjectsByUserId(userId);
+        } else {
+            // Sinon, obtenir tous les projets
+            projects = projectRepository.findAll();
+        }
+
+        long totalProjects = projects.size();
+        long inProgressProjects = projects.stream().filter(p -> p.getProjectState() == State.EN_COURS).count();
+        long pendingProjects = projects.stream().filter(p -> p.getProjectState() == State.EN_ATTENTE).count();
+        long completedProjects = projects.stream().filter(p -> p.getProjectState() == State.TERMINER).count();
+
+        Map<String, Long> statistics = new HashMap<>();
+        statistics.put("totalProjects", totalProjects);
+        statistics.put("inProgressProjects", inProgressProjects);
+        statistics.put("pendingProjects", pendingProjects);
+        statistics.put("completedProjects", completedProjects);
+
+        return statistics;
+    }
+
+    public List<ProjectDTO> findFilteredProjects0(
+            Optional<Priority> projectPriority,
+            Optional<State> projectState,
+            Optional<Long> departmentId,
+            Optional<List<Long>> userIds, // Changer en Optional<List<Long>>
+            Optional<Integer> progress,
+            Optional<LocalDateTime> projectStartDate,
+            Optional<LocalDateTime> projectEndDate) {
+
+        try {
+            List<Project> projects = projectRepository.findAll().stream()
+                    // Filtre par priorité si elle est spécifiée
+                    .filter(project -> projectPriority.map(p -> project.getProjectPriority() == p).orElse(true))
+                    // Filtre par état si il est spécifié
+                    .filter(project -> projectState.map(s -> project.getProjectState() == s).orElse(true))
+                    // Filtre par département si il est spécifié
+                    .filter(project -> departmentId.map(d -> project.getUser().getDepartments().stream()
+                    .anyMatch(department -> department.getDepartmentId().equals(d))).orElse(true))
+                    // Filtre par utilisateur si il est spécifié
+                    .filter(project -> userIds.map(uIds -> project.getUser().getUserId() != null && uIds.contains(project.getUser().getUserId())).orElse(true))
+                    // Filtre par progression si elle est spécifiée
+                    .filter(project -> progress.map(p -> project.getProgress() == p).orElse(true))
+                    // Filtre par date de début si elle est spécifiée
+                    .filter(project -> projectStartDate.map(s -> !project.getProjectStartDate().isBefore(s)).orElse(true))
+                    // Filtre par date de fin si elle est spécifiée
+                    .filter(project -> projectEndDate.map(e -> !project.getProjectEndDate().isAfter(e)).orElse(true))
+                    .collect(Collectors.toList()); // Collecte les projets filtrés en liste
+
+            // Convertit les projets filtrés en DTOs
+            return projects.stream().map(this::convertToDTO).collect(Collectors.toList());
+        } catch (Exception e) {
+            // Gère les exceptions en retournant un message d'erreur
+            throw new RuntimeException("Erreur lors de la récupération des projets filtrés: " + e.getMessage());
+        }
+    }
+
+
+
+    public List<ProjectWithTasksDTO> getProjectsWithTasksByUser(Long userId) {
+        List<Project> projects = projectRepository.findAllProjectsWithTasksByUserId(userId);
+
+        return projects.stream().map(project -> {
+            List<Task> tasks = taskRepository.findByProject(project);
+            ProjectWithTasksDTO dto = new ProjectWithTasksDTO();
+            dto.setProjectId(project.getProjectId());
+            dto.setProjectName(project.getProjectName());
+            dto.setProjectCodes(project.getProjectCodes());
+            dto.setTasks(tasks);
+            return dto;
+        }).collect(Collectors.toList());
+    }
+
+    // public List<ProjectWithTasksDTO> getProjectsWithTasksByUser(Long userId) {
+
+    //     User user = userRepository.findById(userId).orElseThrow(() -> new EntityNotFoundException("Utilisateur non trouvé avec l'ID : " + userId));
+    //     System.out.println(user);
+    //     List<Project> projects = projectRepository.findByUser(user);
+        
+    //     return projects.stream().map(project -> {
+    //         List<Task> tasks = taskRepository.findByProject(project);
+    //         ProjectWithTasksDTO dto = new ProjectWithTasksDTO();
+    //         dto.setProjectId(project.getProjectId());
+    //         dto.setProjectName(project.getProjectName());
+    //         dto.setTasks(tasks);
+    //         return dto;
+    //     }).collect(Collectors.toList());
+    // }
+    
+    
+
+
 
 
 }
