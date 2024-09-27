@@ -16,6 +16,7 @@ public class AuthDTO {
     private String refreshToken;
     private String expirationTime;
     private String username;
+    private String profil;
     private Long   userId;
     private String fonction;
     private String email;

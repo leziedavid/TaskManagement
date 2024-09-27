@@ -5,6 +5,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.OffsetDateTime;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -13,11 +14,10 @@ import java.util.stream.Collectors;
 import org.apache.commons.io.FilenameUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.stereotype.Service;
-import org.springframework.web.multipart.MultipartFile; // Importer l'énumération Role
+import org.springframework.stereotype.Service; // Importer l'énumération Role
+import org.springframework.web.multipart.MultipartFile;
 
 import com.mobisoft.taskmanagement.dto.LeaveDTO;
-// import com.mobisoft.taskmanagement.dto.LeaveDTO;
 import com.mobisoft.taskmanagement.dto.UserDTO;
 import com.mobisoft.taskmanagement.dto.UserDepartmentDTO;
 import com.mobisoft.taskmanagement.dto.UserRoleDTO;
@@ -29,7 +29,6 @@ import com.mobisoft.taskmanagement.repository.DepartmentRepository;
 import com.mobisoft.taskmanagement.repository.UserRepository;
 
 import jakarta.persistence.EntityNotFoundException;
-import java.util.Collections;
 
 @Service
 public class UserService {
@@ -46,6 +45,10 @@ public class UserService {
     @Autowired
     private DepartmentService departmentService;
 
+
+    @Autowired
+    private FileStorageService fileStorageService;
+
     private final String uploadDir = "/Users/osx/Desktop/task-management/Profil";
 
     public UserDTO addUsers(UserDTO userDTO, MultipartFile profil) {
@@ -58,9 +61,15 @@ public class UserService {
         User user = convertToEntity(userDTO);
         // Gestion de la photo de profil
         if (profil != null && !profil.isEmpty()) {
+            
             try {
-                String newFileName = saveFile(profil);
-                user.setProfil(newFileName); // Mettre à jour le nom du fichier dans l'utilisateur
+
+                String publicId = fileStorageService.uploadImage(profil);
+                user.setProfil(publicId);
+
+                // String newFileName = saveFile(profil);
+                // user.setProfil(newFileName);
+
             } catch (IOException e) {
                 throw new RuntimeException("Erreur lors de la gestion du fichier: " + e.getMessage());
             }
@@ -81,8 +90,12 @@ public class UserService {
         // Gestion de la photo de profil
         if (profil != null && !profil.isEmpty()) {
             try {
-                String newFileName = saveFile(profil);
-                existingUser.setProfil(newFileName); // Mettre à jour le nom du fichier dans l'utilisateur
+                
+                String publicId = fileStorageService.uploadImage(profil);
+                existingUser.setProfil(publicId);
+
+                // String newFileName = saveFile(profil);
+                // existingUser.setProfil(newFileName);
             
             } catch (IOException e) {
                 throw new RuntimeException("Erreur lors de la gestion du fichier: " + e.getMessage());

@@ -34,6 +34,7 @@ import jakarta.persistence.EntityNotFoundException;
 public class FileStorageService {
 
     private final String uploadDir = "/Users/osx/Desktop/task-management/Documents";
+    private final String uploadProfilDir = "/Users/osx/Desktop/task-management/Profil";
 
     @Autowired
     private FilesDataRepository filesDataRepository;
@@ -101,7 +102,7 @@ public class FileStorageService {
         }
 
         // Assurer que le répertoire d'upload existe, sinon le créer
-        Path uploadPath = Paths.get(uploadDir);
+        Path uploadPath = Paths.get(uploadProfilDir);
         if (!Files.exists(uploadPath)) {
             Files.createDirectories(uploadPath);
         }
@@ -138,7 +139,7 @@ public class FileStorageService {
         filesData.setPublicId(publicId);
         filesDataRepository.save(filesData);
 
-        return filesData.getId().toString();
+        return filesData.getPublicId();
     }
 
     private  String generatePublicId(Long id) {

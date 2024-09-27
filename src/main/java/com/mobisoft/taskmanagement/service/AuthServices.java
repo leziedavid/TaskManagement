@@ -94,6 +94,7 @@ public class AuthServices {
             String fullName = firstname + " " + lastname;
             // Transmettre la valeur concaténée à la réponse
             response.setUsername(fullName);
+            response.setProfil(user.getProfil());
             
             return response;
             
