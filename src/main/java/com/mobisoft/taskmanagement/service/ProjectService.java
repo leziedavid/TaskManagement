@@ -10,12 +10,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
@@ -24,6 +18,7 @@ import org.springframework.web.multipart.MultipartFile;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mobisoft.taskmanagement.dto.ProjectDTO;
+import com.mobisoft.taskmanagement.dto.ProjectResponse;
 import com.mobisoft.taskmanagement.dto.ProjectWithTasksDTO;
 import com.mobisoft.taskmanagement.dto.ProjetDetailsDTO;
 import com.mobisoft.taskmanagement.dto.ProjetUsersDTO;
@@ -36,16 +31,15 @@ import com.mobisoft.taskmanagement.entity.State;
 import com.mobisoft.taskmanagement.entity.Task;
 import com.mobisoft.taskmanagement.entity.User;
 import com.mobisoft.taskmanagement.entity.UserProject;
+import com.mobisoft.taskmanagement.pagination.Page;
+import com.mobisoft.taskmanagement.pagination.Paginator;
 import com.mobisoft.taskmanagement.repository.ProjectRepository;
 import com.mobisoft.taskmanagement.repository.TaskRepository;
 import com.mobisoft.taskmanagement.repository.UserProjectRepository;
-
 import com.mobisoft.taskmanagement.repository.UserRepository;
-import com.mobisoft.taskmanagement.entity.User;
 
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.persistence.PersistenceException;
-
 
 
 @Service
@@ -244,46 +238,42 @@ public class ProjectService {
         return convertToDTO(projectbyCodes);
     }
 
-    public List<ProjectDTO> findAllProjects(String token, int page, int size, String sortBy) {
-        
+    public ProjectResponse findAllProjects(String token, int page, int size, String sortBy) {
         try {
-            // Obtenez les informations utilisateur à partir du token
             UserRoleDTO userRoleDTO = userService.getUserRoleAndIdFromToken(token);
-
-            // Utilisez l'ID et le rôle de l'utilisateur comme nécessaire
             Long userId = userRoleDTO.getUserId();
             Role role = userRoleDTO.getRole();
-
-            // Créez un objet Pageable pour la pagination
-            // Pageable pageable = PageRequest.of(page, size, Sort.by(sortBy));
-            Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC,sortBy));
-            Pageable pageable2 = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC,"project_created_at"));
-
-            Page<Project> projectPage;
-
+    
+            List<Project> projects;
+    
             if (role == Role.USER) {
-                // Si le rôle est "User", obtenir les projets assignés à l'utilisateur
-                
-                projectPage = projectRepository.findAllProjectsByUserId(userId, pageable2);
+                projects = projectRepository.findProjectsByUserId(userId);
             } else {
-                // Sinon, obtenir tous les projets
-                projectPage = projectRepository.findAll(pageable);
+                projects = projectRepository.findAll();
             }
-
+    
             // Convertir les entités en DTOs
-            return projectPage.getContent().stream().map(this::convertToDTO).collect(Collectors.toList());
-
+            List<ProjectDTO> projectDTOs = projects.stream()
+                .map(this::convertToDTO)
+                .collect(Collectors.toList());
+    
+            // Utiliser le paginator pour obtenir les éléments paginés
+            Page<ProjectDTO> pagedProjects = Paginator.paginate(projectDTOs, page, size, sortBy);
+    
+            // Créer le ProjectResponse avec les éléments paginés
+            return new ProjectResponse(pagedProjects.getContent(), pagedProjects.getTotalElements(), pagedProjects.getTotalPages());
+    
         } catch (Exception e) {
             throw new RuntimeException("Erreur lors de la récupération de tous les projets: " + e.getMessage());
         }
     }
+    
 
     public List<ProjectDTO> findAllProjects1(String token) {
         try {
-            // Obtenez les informations utilisateur à partir du token
             UserRoleDTO userRoleDTO = userService.getUserRoleAndIdFromToken(token);
 
-            // Utilisez l'ID et le rôle de l'utilisateur comme nécessaire
+
             Long userId = userRoleDTO.getUserId();
             Role role = userRoleDTO.getRole();
 
@@ -509,6 +499,61 @@ public class ProjectService {
 
     }
 
+    // AVEC PARGINATION
+
+    public ProjectResponse findFilteredProjects(
+            Optional<Priority> projectPriority,
+            Optional<State> projectState,
+            Optional<Long> departmentId,
+            Optional<List<Long>> userIds,
+            Optional<int[]> progressRange,
+            Optional<LocalDateTime> projectStartDate,
+            Optional<LocalDateTime> projectEndDate,
+            String token,
+            int page,
+            int size,
+            String sortBy) {
+
+        UserRoleDTO userRoleDTO = userService.getUserRoleAndIdFromToken(token);
+        Long userId = userRoleDTO.getUserId();
+        Role role = userRoleDTO.getRole();
+
+        List<Project> projects;
+
+        if (role == Role.USER) {
+            projects = projectRepository.findProjectsByUserId(userId);
+        } else {
+            projects = projectRepository.findAll();
+        }
+
+        // Appliquer les filtres sur les projets
+        List<Project> filteredProjects = projects.stream()
+                .filter(project -> projectPriority.map(p -> project.getProjectPriority() == p).orElse(true))
+                .filter(project -> projectState.map(s -> project.getProjectState() == s).orElse(true))
+                .filter(project -> departmentId.map(d -> project.getUser().getDepartments().stream()
+                .anyMatch(department -> department.getDepartmentId().equals(d))).orElse(true))
+                .filter(project -> userIds.map(
+                uIds -> project.getUser().getUserId() != null && uIds.contains(project.getUser().getUserId()))
+                .orElse(true))
+                .filter(project -> progressRange.map(range -> {
+            int start = range[0];
+            int end = range[1];
+            return project.getProgress() >= start && project.getProgress() <= end;
+        }).orElse(true))
+                .filter(project -> projectStartDate.map(s -> !project.getProjectStartDate().isBefore(s)).orElse(true))
+                .filter(project -> projectEndDate.map(e -> !project.getProjectEndDate().isAfter(e)).orElse(true))
+                .collect(Collectors.toList());
+
+        // Convertir les projets filtrés en DTOs
+        List<ProjectDTO> projectDTOs = filteredProjects.stream().map(this::convertToDTO).collect(Collectors.toList());
+
+        // Utiliser le paginator pour obtenir les éléments paginés
+        Page<ProjectDTO> pagedProjects = Paginator.paginate(projectDTOs, page, size, sortBy);
+
+        // Créer la réponse avec les éléments paginés
+        return new ProjectResponse(pagedProjects.getContent(), pagedProjects.getTotalElements(), pagedProjects.getTotalPages());
+    }
+
     public List<User> getProjectUsersById(Long projectId) {
 
         List<User> users =userProjectRepository.findUsersByProjectId(projectId);
@@ -519,7 +564,7 @@ public class ProjectService {
 
     }
 
-    public List<ProjectDTO> findFilteredProjects(
+    public List<ProjectDTO> findFilteredProjects3(
         Optional<Priority> projectPriority,
         Optional<State> projectState,
         Optional<Long> departmentId,
@@ -570,52 +615,6 @@ public class ProjectService {
     return paginatedProjects.stream().map(this::convertToDTO).collect(Collectors.toList());
 }
 
-    public List<ProjectDTO> findFilteredProjects2(
-        Optional<Priority> projectPriority,
-        Optional<State> projectState,
-        Optional<Long> departmentId,
-        Optional<List<Long>> userIds,
-        Optional<Integer> progress,
-        Optional<LocalDateTime> projectStartDate,
-        Optional<LocalDateTime> projectEndDate,
-        String token,
-        int page,
-        int size) {
-
-        UserRoleDTO userRoleDTO = userService.getUserRoleAndIdFromToken(token);
-        Long userId = userRoleDTO.getUserId();
-        Role role = userRoleDTO.getRole();
-
-        List<Project> projects;
-
-        if (role == Role.USER) {
-            projects = projectRepository.findProjectsByUserId(userId);
-        } else {
-            projects = projectRepository.findAll();
-        }
-
-        // Appliquer les filtres sur les projets
-        List<Project> filteredProjects = projects.stream()
-            .filter(project -> projectPriority.map(p -> project.getProjectPriority() == p).orElse(true))
-            .filter(project -> projectState.map(s -> project.getProjectState() == s).orElse(true))
-            .filter(project -> departmentId.map(d -> project.getUser().getDepartments().stream()
-                    .anyMatch(department -> department.getDepartmentId().equals(d))).orElse(true))
-            .filter(project -> userIds.map(
-                    uIds -> project.getUser().getUserId() != null && uIds.contains(project.getUser().getUserId()))
-                    .orElse(true))
-            .filter(project -> progress.map(p -> project.getProgress() == p).orElse(true))
-            .filter(project -> projectStartDate.map(s -> !project.getProjectStartDate().isBefore(s)).orElse(true))
-            .filter(project -> projectEndDate.map(e -> !project.getProjectEndDate().isAfter(e)).orElse(true))
-            .collect(Collectors.toList());
-
-        // Appliquer la pagination
-        int fromIndex = Math.min(page * size, filteredProjects.size());
-        int toIndex = Math.min(fromIndex + size, filteredProjects.size());
-        List<Project> paginatedProjects = filteredProjects.subList(fromIndex, toIndex);
-
-        // Convertit les projets filtrés et paginés en DTOs
-        return paginatedProjects.stream().map(this::convertToDTO).collect(Collectors.toList());
-    }
 
     public List<ProjectDTO> searchProjectsByName(
         String projectName,
@@ -771,9 +770,12 @@ public class ProjectService {
 
     public List<ProjectWithTasksDTO> getProjectsWithTasksByUser(Long userId) {
         List<Project> projects = projectRepository.findAllProjectsWithTasksByUserId(userId);
-
+    
         return projects.stream().map(project -> {
-            List<Task> tasks = taskRepository.findByProject(project);
+            List<Task> tasks = taskRepository.findByProject(project).stream()
+                .filter(task -> !task.getTaskState().equals(State.TERMINER)) // Filtrer les tâches
+                .collect(Collectors.toList());
+    
             ProjectWithTasksDTO dto = new ProjectWithTasksDTO();
             dto.setProjectId(project.getProjectId());
             dto.setProjectName(project.getProjectName());
@@ -782,26 +784,20 @@ public class ProjectService {
             return dto;
         }).collect(Collectors.toList());
     }
+    
 
-    // public List<ProjectWithTasksDTO> getProjectsWithTasksByUser(Long userId) {
+    // public List<ProjectWithTasksDTO> getProjectsWithTasksByUser2(Long userId) {
+    //     List<Project> projects = projectRepository.findAllProjectsWithTasksByUserId(userId);
 
-    //     User user = userRepository.findById(userId).orElseThrow(() -> new EntityNotFoundException("Utilisateur non trouvé avec l'ID : " + userId));
-    //     System.out.println(user);
-    //     List<Project> projects = projectRepository.findByUser(user);
-        
     //     return projects.stream().map(project -> {
     //         List<Task> tasks = taskRepository.findByProject(project);
     //         ProjectWithTasksDTO dto = new ProjectWithTasksDTO();
     //         dto.setProjectId(project.getProjectId());
     //         dto.setProjectName(project.getProjectName());
+    //         dto.setProjectCodes(project.getProjectCodes());
     //         dto.setTasks(tasks);
     //         return dto;
     //     }).collect(Collectors.toList());
     // }
-    
-    
-
-
-
 
 }

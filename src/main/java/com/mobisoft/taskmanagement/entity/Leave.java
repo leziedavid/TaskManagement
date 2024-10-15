@@ -3,6 +3,7 @@ package com.mobisoft.taskmanagement.entity;
 import java.time.OffsetDateTime;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -28,6 +29,7 @@ public class Leave {
     // private User user;
 
     @ManyToOne
+    @JsonIgnore
     @JoinColumn(name = "user_id")
     @JsonBackReference
     private User user;

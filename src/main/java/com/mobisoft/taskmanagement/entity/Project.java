@@ -65,6 +65,7 @@ public class Project {
     private LocalDateTime projectEndDate;
     
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ssZ")
+    @Column(name = "project_created_at")
     private OffsetDateTime projectCreatedAt = OffsetDateTime.now();
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ssZ")
     private OffsetDateTime projectUpdatedAt = OffsetDateTime.now();

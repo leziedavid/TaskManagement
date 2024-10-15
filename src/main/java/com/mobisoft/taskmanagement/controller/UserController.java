@@ -21,6 +21,7 @@ import org.springframework.web.multipart.MultipartFile;
 import com.mobisoft.taskmanagement.dto.BaseResponse;
 import com.mobisoft.taskmanagement.dto.UserDTO;
 import com.mobisoft.taskmanagement.dto.UserDepartmentDTO;
+import com.mobisoft.taskmanagement.dto.UsersResponse;
 import com.mobisoft.taskmanagement.entity.Role;
 import com.mobisoft.taskmanagement.repository.UserRepository;
 import com.mobisoft.taskmanagement.service.UserService;
@@ -109,27 +110,58 @@ public class UserController {
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
 
+
+    @GetMapping("/users/getAllUsersByDepartment2")
+    public ResponseEntity<BaseResponse<UsersResponse>> getAllUsersByDepartment2(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "lastname") String sortBy) {
+        try {
+            // Appeler le service pour obtenir la liste paginée des utilisateurs avec leurs départements
+            UsersResponse usersWithDepartments = userService.getAllUsersWithDepartments2(page, size, sortBy);
+
+            // Créer une réponse de base avec les utilisateurs
+            BaseResponse<UsersResponse> response = new BaseResponse<>(
+                    HttpStatus.OK.value(),
+                    "Liste des utilisateurs avec leurs départements",
+                    usersWithDepartments
+            );
+
+            // Retourner la réponse encapsulée dans un ResponseEntity
+            return new ResponseEntity<>(response, HttpStatus.OK);
+        } catch (Exception e) {
+            // En cas d'erreur, retourner une réponse d'erreur
+            BaseResponse<UsersResponse> errorResponse = new BaseResponse<>(
+                    HttpStatus.INTERNAL_SERVER_ERROR.value(),
+                    "Erreur lors de la récupération des utilisateurs : " + e.getMessage(),
+                    null
+            );
+            return new ResponseEntity<>(errorResponse, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+
     @GetMapping("/users/getAllUsersByDepartment")
     public ResponseEntity<BaseResponse<List<UserDepartmentDTO>>> getAllUsersByDepartment() {
         try {
             // Appeler le service pour obtenir la liste des utilisateurs avec leurs départements
             List<UserDepartmentDTO> usersWithDepartments = userService.getAllUsersWithDepartments();
-            
+
             // Créer une réponse de base avec les utilisateurs
             BaseResponse<List<UserDepartmentDTO>> response = new BaseResponse<>(
-                HttpStatus.OK.value(),
-                "Liste des utilisateurs avec leurs départements",
-                usersWithDepartments
+                    HttpStatus.OK.value(),
+                    "Liste des utilisateurs avec leurs départements",
+                    usersWithDepartments
             );
-            
+
             // Retourner la réponse encapsulée dans un ResponseEntity
             return new ResponseEntity<>(response, HttpStatus.OK);
         } catch (Exception e) {
             // En cas d'erreur, retourner une réponse d'erreur
             BaseResponse<List<UserDepartmentDTO>> errorResponse = new BaseResponse<>(
-                HttpStatus.INTERNAL_SERVER_ERROR.value(),
-                "Erreur lors de la récupération des utilisateurs : " + e.getMessage(),
-                null
+                    HttpStatus.INTERNAL_SERVER_ERROR.value(),
+                    "Erreur lors de la récupération des utilisateurs : " + e.getMessage(),
+                    null
             );
             return new ResponseEntity<>(errorResponse, HttpStatus.INTERNAL_SERVER_ERROR);
         }
