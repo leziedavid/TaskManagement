@@ -21,10 +21,13 @@ import com.mobisoft.taskmanagement.dto.LeaveDTO;
 import com.mobisoft.taskmanagement.dto.UserDTO;
 import com.mobisoft.taskmanagement.dto.UserDepartmentDTO;
 import com.mobisoft.taskmanagement.dto.UserRoleDTO;
+import com.mobisoft.taskmanagement.dto.UsersResponse;
 import com.mobisoft.taskmanagement.entity.Gender;
 import com.mobisoft.taskmanagement.entity.Leave;
 import com.mobisoft.taskmanagement.entity.User;
 import com.mobisoft.taskmanagement.exception.EmailAlreadyExistsException;
+import com.mobisoft.taskmanagement.pagination.Page;
+import com.mobisoft.taskmanagement.pagination.Paginator;
 import com.mobisoft.taskmanagement.repository.DepartmentRepository;
 import com.mobisoft.taskmanagement.repository.UserRepository;
 
@@ -273,6 +276,64 @@ public class UserService {
         }).collect(Collectors.toList());
 
     }
+
+    public UsersResponse getAllUsersWithDepartments2(int page, int size, String sortBy) {
+        // Récupérer tous les utilisateurs
+        List<User> users = userRepository.findAll();
+
+        // Convertir les utilisateurs en UserDepartmentDTO
+        List<UserDepartmentDTO> userDepartmentDTOs = users.stream().map(user -> {
+            UserDepartmentDTO dto = new UserDepartmentDTO();
+            dto.setUserId(user.getUserId());
+            dto.setLastname(user.getLastname());
+            dto.setFirstname(user.getFirstname());
+            dto.setPhone(user.getPhone());
+            dto.setEmail(user.getEmail());
+            dto.setUsername(user.getUsername());
+            dto.setFonction(user.getFonction());
+            dto.setToken(user.getToken());
+            dto.setOtp(user.getOtp());
+            dto.setIsValid(user.getIsValides());
+            dto.setGenre(user.getGenre());
+            dto.setRole(user.getRole());
+
+            // Mapping des départements
+            dto.setDepartments(user.getDepartments().stream().map(department -> {
+                UserDepartmentDTO.DepartmentDTO departmentDTO = new UserDepartmentDTO.DepartmentDTO();
+                departmentDTO.setDepartmentId(department.getDepartmentId());
+                departmentDTO.setDepartmentName(department.getDepartmentName());
+                return departmentDTO;
+            }).collect(Collectors.toList()));
+
+            // Récupérer le congé le plus récent
+            Leave mostRecentLeave = user.getLeaves().stream()
+                    .max((leave1, leave2) -> leave1.getStartDate().compareTo(leave2.getStartDate()))
+                    .orElse(null);
+
+            if (mostRecentLeave != null && !"completed".equalsIgnoreCase(mostRecentLeave.getStatus())) {
+                LeaveDTO leaveDTO = new LeaveDTO();
+                leaveDTO.setLeaveId(mostRecentLeave.getLeaveId());
+                leaveDTO.setUserId(mostRecentLeave.getUser().getUserId());
+                leaveDTO.setStartDate(mostRecentLeave.getStartDate());
+                leaveDTO.setEndDate(mostRecentLeave.getEndDate());
+                leaveDTO.setLeaveType(mostRecentLeave.getLeaveType());
+                leaveDTO.setStatus(mostRecentLeave.getStatus());
+                leaveDTO.setDescription(mostRecentLeave.getDescription());
+                dto.setLeaves(Collections.singletonList(leaveDTO));
+            } else {
+                dto.setLeaves(Collections.emptyList());
+            }
+
+            return dto;
+        }).collect(Collectors.toList());
+
+        // Utiliser votre paginator pour obtenir les éléments paginés
+        Page<UserDepartmentDTO> pagedUsers = Paginator.paginate(userDepartmentDTOs, page, size, sortBy);
+
+        // Créer le UsersResponse
+        return new UsersResponse(pagedUsers.getContent(), pagedUsers.getTotalElements(), pagedUsers.getTotalPages());
+    }
+
 
     public UserDepartmentDTO getUserByIdWithDepartments(Long userId) {
         // Trouver l'utilisateur par ID

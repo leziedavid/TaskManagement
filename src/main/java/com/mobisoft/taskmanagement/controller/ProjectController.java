@@ -1,7 +1,5 @@
 package com.mobisoft.taskmanagement.controller;
 
-
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -28,6 +26,7 @@ import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mobisoft.taskmanagement.dto.BaseResponse;
 import com.mobisoft.taskmanagement.dto.ProjectDTO;
+import com.mobisoft.taskmanagement.dto.ProjectResponse;
 import com.mobisoft.taskmanagement.dto.ProjectWithTasksDTO;
 import com.mobisoft.taskmanagement.dto.ProjetDetailsDTO;
 import com.mobisoft.taskmanagement.dto.ProjetUsersDTO;
@@ -94,52 +93,61 @@ public class ProjectController {
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
 
+
     @GetMapping("/projects/getAllProjects")
-            public ResponseEntity<BaseResponse<List<ProjectDTO>>> getAllProjects(
-            @RequestHeader("Authorization") String authorizationHeader,
-            @RequestParam(value = "page", defaultValue = "0") int page,
-            @RequestParam(value = "size", defaultValue = "10") int size,
-            @RequestParam(value = "sortBy", defaultValue = "projectCreatedAt") String sortBy) {
+        public ResponseEntity<BaseResponse<ProjectResponse>> getAllProjects(
+        @RequestHeader("Authorization") String authorizationHeader,
+        @RequestParam(value = "page", defaultValue = "1") int page,
+        @RequestParam(value = "size", defaultValue = "10") int size,
+        @RequestParam(value = "sortBy", defaultValue = "projectCreatedAt") String sortBy) {
 
-        // Extraire le token de l'en-tête Authorization
-        String token = authorizationHeader.startsWith("Bearer ") ? authorizationHeader.substring(7) : authorizationHeader;
+    // Extraire le token de l'en-tête Authorization
+    String token = authorizationHeader.startsWith("Bearer ") ? authorizationHeader.substring(7) : authorizationHeader;
 
-        try {
-            // Créer un objet Pageable avec les paramètres de pagination et de tri
-            Pageable pageable = PageRequest.of(page, size, Sort.by(sortBy));
+    try {
+        // Appeler le service pour obtenir la réponse avec les projets et le nombre total d'éléments
+        ProjectResponse projectResponse = projectService.findAllProjects(token, page, size, sortBy);
 
-            // Appeler le service pour obtenir la liste des projets avec le token et la pagination
-            List<ProjectDTO> projects = projectService.findAllProjects(token, page, size, sortBy);
+        // Construire la réponse
+        BaseResponse<ProjectResponse> response = new BaseResponse<>(200, "Liste des projets", projectResponse);
+        return new ResponseEntity<>(response, HttpStatus.OK);
 
-            // Construire la réponse
-            BaseResponse<List<ProjectDTO>> response = new BaseResponse<>(200, "Liste des projets", projects);
-            return new ResponseEntity<>(response, HttpStatus.OK);
-
-        } catch (Exception e) {
-            // Gérer les exceptions et les erreurs ici
-            BaseResponse<List<ProjectDTO>> response = new BaseResponse<>(500, "Erreur lors de la récupération des projets", null);
-            return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
-        }
+    } catch (Exception e) {
+        // Gérer les exceptions et les erreurs ici
+        BaseResponse<ProjectResponse> response = new BaseResponse<>(500, "Erreur lors de la récupération des projets", null);
+        return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
     }
+}
+
 
     // @GetMapping("/projects/getAllProjects")
     // public ResponseEntity<BaseResponse<List<ProjectDTO>>> getAllProjects(
-    //         @RequestHeader("Authorization") String authorizationHeader) {
+    //         @RequestHeader("Authorization") String authorizationHeader,
+    //         @RequestParam(value = "page", defaultValue = "0") int page,
+    //         @RequestParam(value = "size", defaultValue = "10") int size,
+    //         @RequestParam(value = "sortBy", defaultValue = "projectCreatedAt") String sortBy) {
+
     //     // Extraire le token de l'en-tête Authorization
-    //     String token = authorizationHeader.startsWith("Bearer ")
-    //             ? authorizationHeader.substring(7) : authorizationHeader;
+    //     String token = authorizationHeader.startsWith("Bearer ") ? authorizationHeader.substring(7) : authorizationHeader;
+
     //     try {
-    //         // Appeler le service pour obtenir la liste des projets avec le token
-    //         List<ProjectDTO> projects = projectService.findAllProjects(token);
+    //         // Créer un objet Pageable avec les paramètres de pagination et de tri
+    //         Pageable pageable = PageRequest.of(page, size, Sort.by(sortBy));
+
+    //         // Appeler le service pour obtenir la liste des projets avec le token et la pagination
+    //         List<ProjectDTO> projects = projectService.findAllProjects(token, page, size, sortBy);
+
     //         // Construire la réponse
     //         BaseResponse<List<ProjectDTO>> response = new BaseResponse<>(200, "Liste des projets", projects);
     //         return new ResponseEntity<>(response, HttpStatus.OK);
+
     //     } catch (Exception e) {
     //         // Gérer les exceptions et les erreurs ici
     //         BaseResponse<List<ProjectDTO>> response = new BaseResponse<>(500, "Erreur lors de la récupération des projets", null);
     //         return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
     //     }
     // }
+
 
     @GetMapping("/projects/statistics")
     public ResponseEntity<BaseResponse<Map<String, Long>>> getProjectStatistics(@RequestHeader("Authorization") String authorizationHeader) {
@@ -204,7 +212,7 @@ public class ProjectController {
     @GetMapping("/projects/detail/{projetId}")
         public ResponseEntity<BaseResponse<ProjetDetailsDTO>> getProjetDetails(@PathVariable String projetId) {
         ProjetDetailsDTO projetDetails = projectService.getProjetDetails(projetId);
-        BaseResponse<ProjetDetailsDTO> response = new BaseResponse<>(200, "Projet mis à jour avec succès", projetDetails);
+        BaseResponse<ProjetDetailsDTO> response = new BaseResponse<>(200, "detail des projet recuperer  avec succès", projetDetails);
         return new ResponseEntity<>(response, HttpStatus.OK);
         // return ResponseEntity.ok(projetDetails);
     }
@@ -281,49 +289,49 @@ public class ProjectController {
         return ResponseEntity.ok(response);
     }
 
-    @GetMapping("projects/filter2")
-    public BaseResponse<List<ProjectDTO>> getFilteredProjects2(
+    // @GetMapping("projects/filter2")
+    // public BaseResponse<List<ProjectDTO>> getFilteredProjects2(
 
-            @RequestParam(required = false) Priority priority,
-            @RequestParam(required = false) State state,
-            @RequestParam(required = false) Long departmentId,
-            @RequestParam(required = false) String userIds,  // Passer comme chaîne JSON
-            @RequestParam(required = false) Integer progress,
-            @RequestParam(required = false) LocalDateTime startDate,
-            @RequestParam(required = false) LocalDateTime endDate,
-            @RequestHeader("Authorization") String authorizationHeader,
-            @RequestParam(value = "page", defaultValue = "0") int page,
-            @RequestParam(value = "size", defaultValue = "10") int size,
-            @RequestParam(value = "sortBy", defaultValue = "projectCreatedAt") String sortBy) {
+    //         @RequestParam(required = false) Priority priority,
+    //         @RequestParam(required = false) State state,
+    //         @RequestParam(required = false) Long departmentId,
+    //         @RequestParam(required = false) String userIds,  // Passer comme chaîne JSON
+    //         @RequestParam(required = false) Integer progress,
+    //         @RequestParam(required = false) LocalDateTime startDate,
+    //         @RequestParam(required = false) LocalDateTime endDate,
+    //         @RequestHeader("Authorization") String authorizationHeader,
+    //         @RequestParam(value = "page", defaultValue = "0") int page,
+    //         @RequestParam(value = "size", defaultValue = "10") int size,
+    //         @RequestParam(value = "sortBy", defaultValue = "projectCreatedAt") String sortBy) {
 
-        Optional<Priority> optionalPriority = Optional.ofNullable(priority);
-        Optional<State> optionalState = Optional.ofNullable(state);
-        Optional<Long> optionalDepartmentId = Optional.ofNullable(departmentId);
-        Optional<List<Long>> optionalUserIds = parseUserIds(userIds);  // Convertir la chaîne JSON en liste
-        Optional<Integer> optionalProgress = Optional.ofNullable(progress);
-        Optional<LocalDateTime> optionalStartDate = Optional.ofNullable(startDate);
-        Optional<LocalDateTime> optionalEndDate = Optional.ofNullable(endDate);
-        // Extraire le token de l'en-tête Authorization
-        String token = authorizationHeader.startsWith("Bearer ")
-        ? authorizationHeader.substring(7) : authorizationHeader;
+    //     Optional<Priority> optionalPriority = Optional.ofNullable(priority);
+    //     Optional<State> optionalState = Optional.ofNullable(state);
+    //     Optional<Long> optionalDepartmentId = Optional.ofNullable(departmentId);
+    //     Optional<List<Long>> optionalUserIds = parseUserIds(userIds);  // Convertir la chaîne JSON en liste
+    //     Optional<Integer> optionalProgress = Optional.ofNullable(progress);
+    //     Optional<LocalDateTime> optionalStartDate = Optional.ofNullable(startDate);
+    //     Optional<LocalDateTime> optionalEndDate = Optional.ofNullable(endDate);
+    //     // Extraire le token de l'en-tête Authorization
+    //     String token = authorizationHeader.startsWith("Bearer ")
+    //     ? authorizationHeader.substring(7) : authorizationHeader;
 
-        List<ProjectDTO> projects = projectService.findFilteredProjects2(
-                optionalPriority,
-                optionalState,
-                optionalDepartmentId,
-                optionalUserIds,
-                optionalProgress,
-                optionalStartDate,
-                optionalEndDate,
-                token,
-                page,
-                size);
+    //     List<ProjectDTO> projects = projectService.findFilteredProjects2(
+    //             optionalPriority,
+    //             optionalState,
+    //             optionalDepartmentId,
+    //             optionalUserIds,
+    //             optionalProgress,
+    //             optionalStartDate,
+    //             optionalEndDate,
+    //             token,
+    //             page,
+    //             size);
 
-        return new BaseResponse<>(200, "Liste des projets", projects);
-    }
+    //     return new BaseResponse<>(200, "Liste des projets", projects);
+    // }
 
     @GetMapping("projects/filter")
-    public BaseResponse<List<ProjectDTO>> getFilteredProjects(
+    public BaseResponse<ProjectResponse> getFilteredProjects(
             @RequestParam(required = false) Priority priority,
             @RequestParam(required = false) State state,
             @RequestParam(required = false) Long departmentId,
@@ -335,19 +343,21 @@ public class ProjectController {
             @RequestParam(value = "page", defaultValue = "0") int page,
             @RequestParam(value = "size", defaultValue = "10") int size,
             @RequestParam(value = "sortBy", defaultValue = "projectCreatedAt") String sortBy) {
-
-        Optional<Priority> optionalPriority = Optional.ofNullable(priority);
-        Optional<State> optionalState = Optional.ofNullable(state);
-        Optional<Long> optionalDepartmentId = Optional.ofNullable(departmentId);
-        Optional<List<Long>> optionalUserIds = parseUserIds(userIds);  // Convertir la chaîne JSON en liste
-        Optional<int[]> optionalProgress = parseProgress(progress); // Convertir la chaîne d'intervalle en tableau
-        Optional<LocalDateTime> optionalStartDate = Optional.ofNullable(startDate);
-        Optional<LocalDateTime> optionalEndDate = Optional.ofNullable(endDate);
-        // Extraire le token de l'en-tête Authorization
-        String token = authorizationHeader.startsWith("Bearer ")
-                ? authorizationHeader.substring(7) : authorizationHeader;
-
-        List<ProjectDTO> projects = projectService.findFilteredProjects(
+    
+            Optional<Priority> optionalPriority = Optional.ofNullable(priority);
+            Optional<State> optionalState = Optional.ofNullable(state);
+            Optional<Long> optionalDepartmentId = Optional.ofNullable(departmentId);
+            Optional<List<Long>> optionalUserIds = parseUserIds(userIds);  // Convertir la chaîne JSON en liste
+            Optional<int[]> optionalProgress = parseProgress(progress); // Convertir la chaîne d'intervalle en tableau
+            Optional<LocalDateTime> optionalStartDate = Optional.ofNullable(startDate);
+            Optional<LocalDateTime> optionalEndDate = Optional.ofNullable(endDate);
+    
+            // Extraire le token de l'en-tête Authorization
+            String token = authorizationHeader.startsWith("Bearer ")
+                    ? authorizationHeader.substring(7) : authorizationHeader;
+    
+        // Appeler le service pour obtenir la réponse paginée
+        ProjectResponse projectResponse = projectService.findFilteredProjects(
                 optionalPriority,
                 optionalState,
                 optionalDepartmentId,
@@ -357,12 +367,14 @@ public class ProjectController {
                 optionalEndDate,
                 token,
                 page,
-                size);
-
-        return new BaseResponse<>(200, "Liste des projets", projects);
+                size,
+                sortBy); // Inclure sortBy
+    
+        return new BaseResponse<>(200, "Liste des projets", projectResponse);
     }
+    
 
-private Optional<int[]> parseProgress(String progress) {
+    private Optional<int[]> parseProgress(String progress) {
     if (progress == null || progress.isEmpty()) {
         return Optional.empty();
     }

@@ -15,10 +15,16 @@ public class CorsConfig {
             public void addCorsMappings(CorsRegistry registry) {
                 registry.addMapping("/**")
                         .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
-                        .allowedOrigins("http://localhost:5173", "http://192.168.4.55:3000") // Spécifie toutes les origines
+                        .allowedOrigins(
+                            "http://localhost:5173",
+                            "http://192.168.4.55:3000",
+                            "http://localhost:3000",
+                            "http://localhost:3001"
+                        ) // Spécifie toutes les origines
                         .allowedHeaders("*")
                         .allowCredentials(true); // Si tu utilises des cookies ou l'authentification
             }
         };
     }
 }
+
