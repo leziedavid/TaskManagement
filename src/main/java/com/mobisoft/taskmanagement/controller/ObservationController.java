@@ -12,79 +12,64 @@ import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.multipart.MultipartFile;
 
 import com.mobisoft.taskmanagement.dto.BaseResponse;
 import com.mobisoft.taskmanagement.dto.ObservationDTO;
 import com.mobisoft.taskmanagement.service.ObservationService;
 
-import io.swagger.annotations.ApiImplicitParam;
-import io.swagger.annotations.ApiImplicitParams;
+import jakarta.ws.rs.core.MediaType;
 
 @RestController
 @Validated
-@RequestMapping("/api/v1/obs")
+@RequestMapping("/api/v1")
 public class ObservationController {
 
     @Autowired
     private ObservationService observationService;
 
-    @ApiImplicitParams({
-        @ApiImplicitParam(name = "file", dataType = "file", paramType = "form", value = "Fichier à télécharger", required = true)
-    })
-
-    @PostMapping(value = "/addObservations")
-    public ResponseEntity<BaseResponse<ObservationDTO>> createObservation( @Validated @RequestBody ObservationDTO observationDTO, @RequestParam(value = "file", required = false) List<MultipartFile> files) {
-        ObservationDTO createdObservation;
-        
-        if (files != null && !files.isEmpty()) {
-            createdObservation = observationService.createObservation(observationDTO, files);
-        } else {
-            createdObservation = observationService.createObservation(observationDTO, null);
-        }
-        
-        BaseResponse<ObservationDTO> response = new BaseResponse<>(HttpStatus.CREATED.value(), "Observation créée avec succès", createdObservation);
+    @PostMapping(value = "/obs/AddObservation", consumes = MediaType.MULTIPART_FORM_DATA)
+    public ResponseEntity<BaseResponse<ObservationDTO>> AddObservation(@ModelAttribute ObservationDTO observationDTO) {
+        ObservationDTO createdObservation = observationService.AddObservation(observationDTO);
+        // Création de la réponse à retourner
+        BaseResponse<ObservationDTO> response = new BaseResponse<>(201, "Observation créée avec succès", createdObservation);
+        // Retourner la réponse avec le statut HTTP 201 Created
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
 
-    @GetMapping("/{id}")
+    @GetMapping("/obs/{id}")
     public ResponseEntity<BaseResponse<ObservationDTO>> getObservationById(@PathVariable Long id) {
         ObservationDTO observation = observationService.getObservationById(id);
         BaseResponse<ObservationDTO> response = new BaseResponse<>(200, "Détails de l'observation", observation);
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
 
-    @GetMapping("/getAllObservations")
+    @GetMapping("/obs/getObservationEndFilesById/{id}")
+    public ResponseEntity<BaseResponse<ObservationDTO>> getObservationEndFilesById(@PathVariable Long id) {
+        ObservationDTO observation = observationService.getObservationEndFilesById(id);
+        BaseResponse<ObservationDTO> response = new BaseResponse<>(200, "Détails de l'observation", observation);
+        return new ResponseEntity<>(response, HttpStatus.OK);
+    }
+
+    @GetMapping("/obs/getAllObservations")
         public ResponseEntity<BaseResponse<List<ObservationDTO>>> getAllObservations() {
         List<ObservationDTO> observations = observationService.findAllObservations();
         BaseResponse<List<ObservationDTO>> response = new BaseResponse<>(200, "Liste des observations", observations);
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
 
-    @PutMapping(value = "/updateObservation/{id}")
-    public ResponseEntity<BaseResponse<ObservationDTO>> updateObservation(
-        @PathVariable("id") Long observationId,
-        @Validated @ModelAttribute ObservationDTO observationDTO,
-        @RequestParam(value = "files", required = false) List<MultipartFile> files) {
+
+    @PutMapping(value="/obs/updateObservation/{id}", consumes = MediaType.MULTIPART_FORM_DATA)
+    public ResponseEntity<BaseResponse<ObservationDTO>> updateObservation(@PathVariable Long id, @ModelAttribute  ObservationDTO observationDTO) {
+        ObservationDTO updatedObservation = observationService.updateObservation(id, observationDTO);
+    BaseResponse<ObservationDTO> response = new BaseResponse<>(200, "Observation mise à jour avec succès", updatedObservation);
+    return new ResponseEntity<>(response, HttpStatus.OK);
+}
     
-        ObservationDTO updatedObservation;
     
-        if (files != null && !files.isEmpty()) {
-            updatedObservation = observationService.updateObservation(observationId, observationDTO, files);
-        } else {
-            updatedObservation = observationService.updateObservation(observationId, observationDTO, null);
-        }
-    
-        BaseResponse<ObservationDTO> response = new BaseResponse<>(HttpStatus.OK.value(), "Observation mise à jour avec succès", updatedObservation);
-        return ResponseEntity.status(HttpStatus.OK).body(response);
-    }
-    
-    @DeleteMapping("/{id}")
+    @DeleteMapping("/obs/delete/{id}")
     public ResponseEntity<BaseResponse<Void>> deleteObservation(@PathVariable Long id) {
         observationService.deleteObservation(id);
         BaseResponse<Void> response = new BaseResponse<>(200, "Observation supprimée avec succès", null);

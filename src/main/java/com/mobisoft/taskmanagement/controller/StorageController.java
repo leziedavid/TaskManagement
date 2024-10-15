@@ -35,8 +35,6 @@ public class StorageController {
     @PostMapping
     public ResponseEntity<BaseResponse<List<String>>> uploadImage(@RequestParam("files") List<MultipartFile> files) {
 
-    // public ResponseEntity<BaseResponse<List<String>>> uploadImage(@ApiParam(value = "Les fichiers à télécharger", required = true) @RequestParam("files") List<MultipartFile> files) {
-
         List<String> uploadResults = files.stream()
                 .map(file -> {
                     try {
@@ -52,6 +50,7 @@ public class StorageController {
 
     @GetMapping("/{publicId}")
     public ResponseEntity<Object> downloadFile(@PathVariable String publicId) throws FileNotFoundException {
+        System.out.println("bonjour");
         HttpHeaders headers = new HttpHeaders();
         InputStreamResource fileResource = fileService.downloadFile(publicId, headers);
         return ResponseEntity.ok()

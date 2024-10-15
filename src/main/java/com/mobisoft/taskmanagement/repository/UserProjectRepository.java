@@ -26,4 +26,5 @@ public interface UserProjectRepository extends JpaRepository<UserProject, Long> 
     List<UserProject> findByProjectIdAndLeader(Long projectId, boolean leader);
     // Optional<UserProject> findByProjectIdAndUserId(Long projectId, Long userId);
 
+
 }

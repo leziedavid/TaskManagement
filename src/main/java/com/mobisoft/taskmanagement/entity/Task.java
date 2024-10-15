@@ -1,6 +1,6 @@
 package com.mobisoft.taskmanagement.entity;
 
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
@@ -28,6 +28,8 @@ public class Task {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long taskId;
 
+    private String taskCode;
+
     private String taskName;
     @Lob
     @Column(columnDefinition = "TEXT")
@@ -46,21 +48,29 @@ public class Task {
     private String taskNombreHeurs;
 
     @JsonFormat(pattern = "yyyy-MM-dd")
-    private LocalDate taskStartDate;
+    private LocalDateTime taskStartDate;
 
     @JsonFormat(pattern = "yyyy-MM-dd")
-    private LocalDate taskEndDate;
+    private LocalDateTime taskEndDate;
 
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ssZ")
     private OffsetDateTime taskCreatedAt = OffsetDateTime.now();
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ssZ")
     private OffsetDateTime taskUpdatedAt = OffsetDateTime.now();
 
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm")
+    private LocalDateTime alerteDate;
+
     @Min(0)
     @Max(100)
+    @Column(name = "progression", columnDefinition = "integer default 0")
     private Integer progression;
+    
     private String colorCode;
-
+    
+    @Column(name = "is_valides", columnDefinition = "integer default 0")
+    private Integer isValides = 0;
+    
     @ManyToOne
     @JoinColumn(name = "project_id")
     private Project project;
@@ -73,19 +83,13 @@ public class Task {
     @JoinColumn(name = "assigned_user_id")
     private User assigned;
 
-    // @ManyToMany
-    // @JoinTable(
-    //     name = "task_action",
-    //     joinColumns = @JoinColumn(name = "task_id"),
-    //     inverseJoinColumns = @JoinColumn(name = "action_id")
-    // )
-    // private Set<Action> actions;
-    
-    // @ManyToMany
-    // @JoinTable(
-    //     name = "task_observation",
-    //     joinColumns = @JoinColumn(name = "task_id"),
-    //     inverseJoinColumns = @JoinColumn(name = "observation_id")
-    // )
-    // private Set<Observation> observations;
+
+    // Méthode pour obtenir l'ID du projet
+    public Long getProjectId() {
+        if (project != null) {
+            return project.getProjectId();
+        }
+        return null;
+    }
+
 }

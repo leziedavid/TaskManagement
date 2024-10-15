@@ -8,8 +8,6 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -38,14 +36,6 @@ public class FilesData {
     private OffsetDateTime dateCreation;
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ssZ")
     private OffsetDateTime dateModification;
-
-    // @ManyToOne
-    // @JoinColumn(name = "idProject")
-    // private Project project;
-
-    // @ManyToOne
-    // @JoinColumn(name = "ressourceId")
-    // private Observation observation;
     
     // Ajoutez les méthodes getter et setter pour la propriété filePath
     public String getFilePath() {

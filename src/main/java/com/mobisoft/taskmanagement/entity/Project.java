@@ -1,13 +1,13 @@
 package com.mobisoft.taskmanagement.entity;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.util.HashSet;
 import java.util.Optional;
 import java.util.Set;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
-import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -50,21 +50,22 @@ public class Project {
     private String stateColor;
     @Min(0)
     @Max(100)
-    private int progress = 0; // Valeur par défaut pour progress
-
     
+    @Column(name = "progress", columnDefinition = "integer default 0")
+    private int progress;
     @Lob
     @Column(columnDefinition = "TEXT")
     private String projectDescription; // Champ pour le texte long
 
 
     @JsonFormat(pattern = "yyyy-MM-dd")
-    private LocalDate projectStartDate;
+    private LocalDateTime projectStartDate;
 
     @JsonFormat(pattern = "yyyy-MM-dd")
-    private LocalDate projectEndDate;
+    private LocalDateTime projectEndDate;
     
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ssZ")
+    @Column(name = "project_created_at")
     private OffsetDateTime projectCreatedAt = OffsetDateTime.now();
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ssZ")
     private OffsetDateTime projectUpdatedAt = OffsetDateTime.now();
@@ -79,7 +80,7 @@ public class Project {
     // private Set<FilesData> filesData;
 
     @ManyToOne
-    @JoinColumn(name = "user_id") // Nom de la colonne dans la table projects faisant référence à l'utilisateur
+    @JoinColumn(name = "user_id") // Nom de la colonne dans la table projects faisant référence à l'utilisateur qqui a crée le projet
     private User user;
 
 

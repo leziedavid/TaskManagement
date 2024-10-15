@@ -1,6 +1,7 @@
 package com.mobisoft.taskmanagement.entity;
 
 import java.time.OffsetDateTime;
+import java.util.HashSet;
 import java.util.Set;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
@@ -28,7 +29,9 @@ public class Observation {
     private String description;
     
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ssZ")
-    private OffsetDateTime observationCreatedAt;
+    private OffsetDateTime observationCreatedAt = OffsetDateTime.now();
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ssZ")
+    private OffsetDateTime observationUpdatedAt = OffsetDateTime.now();
 
     @ManyToOne
     @JoinColumn(name = "task_id")
@@ -43,7 +46,7 @@ public class Observation {
         joinColumns = @JoinColumn(name = "observation_id"),
         inverseJoinColumns = @JoinColumn(name = "filesData_id")
     )
-    private Set<FilesData> filesData;
+    private Set<FilesData> filesData = new HashSet<>(); // Initialisation avec une HashSet
 
     @PrePersist
     protected void onCreate() {

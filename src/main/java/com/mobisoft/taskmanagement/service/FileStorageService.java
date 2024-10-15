@@ -20,8 +20,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.mobisoft.taskmanagement.entity.FilesData;
+import com.mobisoft.taskmanagement.entity.Observation;
 import com.mobisoft.taskmanagement.entity.Project;
 import com.mobisoft.taskmanagement.repository.FilesDataRepository;
+import com.mobisoft.taskmanagement.repository.ObservationRepository;
 import com.mobisoft.taskmanagement.repository.ProjectRepository;
 
 import jakarta.persistence.EntityNotFoundException;
@@ -32,6 +34,7 @@ import jakarta.persistence.EntityNotFoundException;
 public class FileStorageService {
 
     private final String uploadDir = "/Users/osx/Desktop/task-management/Documents";
+    private final String uploadProfilDir = "/Users/osx/Desktop/task-management/Profil";
 
     @Autowired
     private FilesDataRepository filesDataRepository;
@@ -40,7 +43,8 @@ public class FileStorageService {
     @Autowired
     private ProjectRepository projectRepository;
 
-
+    @Autowired
+    private ObservationRepository observationRepository;
 
     public String uploadFileWithTitle(MultipartFile file, String title) throws IOException {
         
@@ -98,7 +102,7 @@ public class FileStorageService {
         }
 
         // Assurer que le répertoire d'upload existe, sinon le créer
-        Path uploadPath = Paths.get(uploadDir);
+        Path uploadPath = Paths.get(uploadProfilDir);
         if (!Files.exists(uploadPath)) {
             Files.createDirectories(uploadPath);
         }
@@ -135,7 +139,7 @@ public class FileStorageService {
         filesData.setPublicId(publicId);
         filesDataRepository.save(filesData);
 
-        return filesData.getId().toString();
+        return filesData.getPublicId();
     }
 
     private  String generatePublicId(Long id) {
@@ -171,6 +175,13 @@ public class FileStorageService {
         FilesData filesData = filesDataRepository.findById(userId).orElseThrow(() -> new EntityNotFoundException("Le fichier avec l'ID spécifié n'existe pas"));
         project.getFilesData().add(filesData);
         projectRepository.save(project);
+    }
+
+    public void assignFilesToObservation(Long observationId, Long userId) {
+        Observation observation = observationRepository.findById(observationId).orElseThrow(() -> new EntityNotFoundException("L'observation avec l'ID spécifié n'existe pas"));
+        FilesData filesData = filesDataRepository.findById(userId).orElseThrow(() -> new EntityNotFoundException("Le fichier avec l'ID spécifié n'existe pas"));
+        observation.getFilesData().add(filesData);
+        observationRepository.save(observation);
     }
 
 }

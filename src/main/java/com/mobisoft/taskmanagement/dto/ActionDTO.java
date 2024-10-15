@@ -14,12 +14,15 @@ public class ActionDTO {
     
     private Long actionId;
     @NotBlank(message = "La description ne peut pas être vide ou nul")
+    private String libelle;
     private String description;
-
-    // @NotBlank(message = "Le nombre hours ne peut pas être vide ou nul")
-    // @NotEmpty(message = "Le nombre hours ne peut pas être vide ou nul")
+    private String NombreJours;
+    private String actionCreatedAt;
+    private String actionUpdatedAt;
     private Integer hours;
-
     private Long taskId;
     private Long userId;
+    private String actionStartDate;
+    private String actionEndDate;
+    private Integer isValides;
 }

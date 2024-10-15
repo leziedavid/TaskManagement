@@ -52,6 +52,7 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .cors(Customizer.withDefaults()) // Configuration CORS par défaut
                 .authorizeHttpRequests(request -> request
+                    // .requestMatchers("/statistique/global").permitAll() // Permet l'accès à cet endpoint
                     .requestMatchers("/api/**", "/public/**").permitAll() // Autoriser ces chemins sans authentification
                     .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll() // Autoriser Swagger UI
                     .anyRequest().authenticated() // Toutes les autres requêtes nécessitent une authentification

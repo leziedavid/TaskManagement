@@ -1,14 +1,16 @@
 package com.mobisoft.taskmanagement.service;
 
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+// import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mobisoft.taskmanagement.dto.DepartmentDTO;
 import com.mobisoft.taskmanagement.entity.Department;
 import com.mobisoft.taskmanagement.entity.User;
@@ -16,20 +18,22 @@ import com.mobisoft.taskmanagement.repository.DepartmentRepository;
 import com.mobisoft.taskmanagement.repository.UserRepository;
 
 import jakarta.persistence.EntityNotFoundException;
+// import jakarta.persistence.PersistenceContext;
+
 
 @Service
 public class DepartmentService {
 
-    @Autowired
-    private ObjectMapper objectMapper;
-    
+    // @Autowired
+    // private ObjectMapper objectMapper;
+
     @Autowired
     private DepartmentRepository departmentRepository;
 
     @Autowired
     private UserRepository userRepository;
 
-    public DepartmentDTO createDepartment(DepartmentDTO departmentDTO) {
+    public DepartmentDTO Adddepartments(DepartmentDTO departmentDTO) {
         Department department = convertToEntity(departmentDTO);
         Department savedDepartment = departmentRepository.save(department);
         return convertToDTO(savedDepartment);
@@ -37,9 +41,7 @@ public class DepartmentService {
     
     public List<DepartmentDTO> findAllDepartments() {
         List<Department> departments = departmentRepository.findAll();
-        return departments.stream()
-                .map(this::convertToDTO)
-                .collect(Collectors.toList());
+        return departments.stream().map(this::convertToDTO).collect(Collectors.toList());
     }
 
     public DepartmentDTO getDepartmentById(Long id) {
@@ -52,24 +54,50 @@ public class DepartmentService {
     }
 
 
-    public List<?> getUsersByDepartmentId(Long departmentId) {
-        Department department = departmentRepository.findById(departmentId).orElseThrow(() -> new EntityNotFoundException("Le département avec l'ID spécifié n'existe pas"));
-        // System.out.println(department.getUsers().toString());
-        return objectMapper.convertValue(department.getUsers(), List.class);
+    // public List<?> getUsersByDepartmentId(Long departmentId) {
+    //     Department department = departmentRepository.findById(departmentId).orElseThrow(() -> new EntityNotFoundException("Le département avec l'ID spécifié n'existe pas"));
+    //     System.out.println(department.getUsers().toString());
+    //     return objectMapper.convertValue(department.getUsers(), List.class);
+    // }
+
+    // public List<User> getUsersByDepartmentId(Long departmentId) {
+    //     return departmentRepository.findUsersByDepartmentId(departmentId);
+    // }
+
+    // public List<User> getUsersByDepartmentId(Long departmentId) {
+    //     Department department = departmentRepository.findById(departmentId)
+    //         .orElseThrow(() -> new RuntimeException("Département non trouvé avec l'ID : " + departmentId));
+    //     return department.getUsers();
+    // }
+
+    public List<User> getUsersByDepartmentId(Long departmentId) {
+        Department department = departmentRepository.findById(departmentId).orElseThrow(() -> new RuntimeException("Département non trouvé avec l'ID : " + departmentId));
+        return department.getUsers();
     }
 
-    public DepartmentDTO updateDepartment(Long departmentId, DepartmentDTO departmentDTO) {
-        Department department = departmentRepository.findById(departmentId).orElseThrow(() -> new EntityNotFoundException("Le département avec l'ID spécifié n'existe pas"));
-        updateDepartmentFromDTO(department, departmentDTO);
-        Department updatedDepartment = departmentRepository.save(department);
-        return convertToDTO(updatedDepartment);
+    public List<User> getUsersByDepartmentIds(List<Long> departmentIds) {
+        // Récupérer les départements basés sur les IDs
+        List<Department> departments = departmentRepository.findAllById(departmentIds);
+
+        // Vérifier si tous les départements ont été trouvés
+        if (departments.size() != departmentIds.size()) {
+            throw new RuntimeException("Un ou plusieurs départements non trouvés");
+        }
+
+        // Extraire tous les utilisateurs des départements
+        Set<User> users = departments.stream()
+                .flatMap(department -> department.getUsers().stream())
+                .collect(Collectors.toSet());
+
+        return new ArrayList<>(users); // Convertir en liste si nécessaire
     }
+
+    
+
 
 
     public boolean deleteDepartment(Long departmentId) {
-        if (!departmentRepository.existsById(departmentId)) {
-            throw new EntityNotFoundException("Le département avec l'ID spécifié n'existe pas");
-        }
+        if (!departmentRepository.existsById(departmentId)) { throw new EntityNotFoundException("Le département avec l'ID spécifié n'existe pas");}
         departmentRepository.deleteById(departmentId);
         return true;
     }
@@ -77,17 +105,60 @@ public class DepartmentService {
     /**
      * Associe un utilisateur à un département lors de l'inscription.
      */
-    public void assignUserToDepartment(Long departmentId, Long userId) {
+    public void assignUserToDepartmentx(Long departmentId, Long userId) {
+
+        System.out.println(userId);
         Department department = departmentRepository.findById(departmentId).orElseThrow(() -> new EntityNotFoundException("Le département avec l'ID spécifié n'existe pas"));
         User user = userRepository.findById(userId).orElseThrow(() -> new EntityNotFoundException("L'utilisateur avec l'ID spécifié n'existe pas"));
         department.getUsers().add(user);
         departmentRepository.save(department);
     }
 
+    
+    public void assignUserToDepartment(Long departmentId, Long userId) {
+
+        // Trouver le nouveau département et l'utilisateur
+        Department newDepartment = departmentRepository.findById(departmentId)
+                .orElseThrow(() -> new EntityNotFoundException("Le département avec l'ID spécifié n'existe pas"));
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new EntityNotFoundException("L'utilisateur avec l'ID spécifié n'existe pas"));
+    
+        // Trouver tous les départements auxquels l'utilisateur est actuellement associé
+        List<Department> oldDepartments = departmentRepository.findDepartmentsOfUser(userId);
+    
+        // Supprimer l'utilisateur de tous ses anciens départements
+        for (Department oldDepartment : oldDepartments) {
+            if (!oldDepartment.getDepartmentId().equals(newDepartment.getDepartmentId())) {
+                oldDepartment.getUsers().remove(user);
+                user.getDepartments().remove(oldDepartment);
+                // Sauvegarder les modifications
+                departmentRepository.save(oldDepartment);
+            }
+        }
+    
+        // Ajouter l'utilisateur au nouveau département
+        if (!newDepartment.getUsers().contains(user)) {
+            newDepartment.getUsers().add(user);
+        }
+    
+        // Ajouter le nouveau département à la liste des départements de l'utilisateur
+        if (!user.getDepartments().contains(newDepartment)) {
+            user.getDepartments().add(newDepartment);
+        }
+    
+        // Sauvegarder les modifications dans le nouveau département et l'utilisateur
+        departmentRepository.save(newDepartment);
+        userRepository.save(user);
+    
+        System.out.println("Utilisateur ajouté au département avec succès.");
+    }
+    
+
     private DepartmentDTO convertToDTO(Department department) {
         DepartmentDTO departmentDTO = new DepartmentDTO();
         departmentDTO.setDepartmentId(department.getDepartmentId());
         departmentDTO.setDepartmentName(department.getDepartmentName());
+        departmentDTO.setDepartmentSigle(department.getDepartmentSigle());
         departmentDTO.setDepartmentCreatedAt(department.getDepartmentCreatedAt());
         departmentDTO.setDepartmentUpdatedAt(department.getDepartmentUpdatedAt());
         // departmentDTO.setUsers(department.getUsers());
@@ -95,10 +166,10 @@ public class DepartmentService {
         return departmentDTO;
     }
 
-
     private Department convertToEntity(DepartmentDTO departmentDTO) {
         Department department = new Department();
         department.setDepartmentName(departmentDTO.getDepartmentName());
+        department.setDepartmentSigle(departmentDTO.getDepartmentSigle());
         department.setDepartmentCreatedAt(OffsetDateTime.now());
         department.setDepartmentUpdatedAt(OffsetDateTime.now());
         return department;
@@ -107,6 +178,7 @@ public class DepartmentService {
 
     private void updateDepartmentFromDTO(Department department, DepartmentDTO departmentDTO) {
         department.setDepartmentName(departmentDTO.getDepartmentName());
+        department.setDepartmentSigle(departmentDTO.getDepartmentSigle());
         department.setDepartmentUpdatedAt(OffsetDateTime.now());
     }
 
