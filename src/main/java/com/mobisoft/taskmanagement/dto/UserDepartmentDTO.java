@@ -1,8 +1,5 @@
 package com.mobisoft.taskmanagement.dto;
-
-import java.time.OffsetDateTime;
 import java.util.List;
-
 import com.mobisoft.taskmanagement.entity.Gender;
 import com.mobisoft.taskmanagement.entity.Role;
 import lombok.Data;
