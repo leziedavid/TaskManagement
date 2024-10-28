@@ -33,8 +33,11 @@ import jakarta.persistence.EntityNotFoundException;
 @Service
 public class FileStorageService {
 
-    private final String uploadDir = "C:\\Users\\MOBISOFT_012\\Desktop\\TDLLEZIE\\TaskBakend\\Documents";
-    private final String uploadProfilDir = "C:\\Users\\MOBISOFT_012\\Desktop\\TDLLEZIE\\TaskBakend\\Documents";
+    // private final String uploadDir = "C:\\Users\\MOBISOFT_012\\Desktop\\TDLLEZIE\\TaskBakend\\Documents";
+    // private final String uploadProfilDir = "C:\\Users\\MOBISOFT_012\\Desktop\\TDLLEZIE\\TaskBakend\\Documents";
+
+    private final String uploadDir = "/home/mohamed/mobitask/TaskManagement";
+    private final String uploadProfilDir = "=/home/mohamed/mobitask/TaskManagement";
 
     @Autowired
     private FilesDataRepository filesDataRepository;

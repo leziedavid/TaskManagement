@@ -52,8 +52,11 @@ public class UserService {
     @Autowired
     private FileStorageService fileStorageService;
 
-    private final String uploadDir = "C:\\Users\\MOBISOFT_012\\Desktop\\TDLLEZIE\\TaskBakend\\Profil";
+    // private final String uploadDir = "C:\\Users\\MOBISOFT_012\\Desktop\\TDLLEZIE\\TaskBakend\\Profil";
     // private final String uploadDir = "/Users/osx/Desktop/task-management/Profil";
+
+    private final String uploadDir = "/home/mohamed/mobitask/TaskManagement";
+    private final String uploadProfilDir = "=/home/mohamed/mobitask/TaskManagement";
 
     public UserDTO addUsers(UserDTO userDTO, MultipartFile profil) {
         // Vérification si l'email existe déjà
