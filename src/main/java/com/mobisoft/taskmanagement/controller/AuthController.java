@@ -49,12 +49,29 @@ public class AuthController {
     }
 
 
-    @PostMapping("/send-otp")
-    public ResponseEntity<BaseResponse<AuthDTO>> sendOTPByEmail(@RequestBody AuthDTO data) throws MessagingException{
+    @PostMapping("/sendOtp")
+    public ResponseEntity<BaseResponse<AuthDTO>> sendOTPByEmail(@RequestBody AuthDTO data) {
+        try {
             AuthDTO authDTO = authServices.sendOTPByEmail(data);
-            BaseResponse<AuthDTO> response = new BaseResponse<>(201,authDTO.getMessage(), authDTO);
+            BaseResponse<AuthDTO> response = new BaseResponse<>(authDTO.getStatus(), authDTO.getMessage(), authDTO);
             return ResponseEntity.ok(response);
+        } catch (MessagingException e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new BaseResponse<>(HttpStatus.INTERNAL_SERVER_ERROR.value(), "Erreur d'envoi d'email.", null));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new BaseResponse<>(HttpStatus.INTERNAL_SERVER_ERROR.value(), "Une erreur inattendue est survenue.", null));
+        }
     }
+
+
+
+    // @PostMapping("/sendOtp")
+    // public ResponseEntity<BaseResponse<AuthDTO>> sendOTPByEmail(@RequestBody AuthDTO data) throws MessagingException{
+    //         AuthDTO authDTO = authServices.sendOTPByEmail(data);
+    //         BaseResponse<AuthDTO> response = new BaseResponse<>(authDTO.getStatus(),authDTO.getMessage(), authDTO);
+    //         return ResponseEntity.ok(response);
+    // }
 
     @PostMapping("/ResetPassword")
     public ResponseEntity<BaseResponse<AuthDTO>> ResetPassword(@RequestBody AuthDTO data) throws MessagingException{

@@ -16,6 +16,7 @@ import com.mobisoft.taskmanagement.dto.UserDTO;
 import com.mobisoft.taskmanagement.entity.User; // Importer l'énumération Role
 import com.mobisoft.taskmanagement.repository.UserRepository;
 
+import jakarta.mail.MessagingException;
 import jakarta.persistence.EntityNotFoundException;
 
 @Service
@@ -127,30 +128,69 @@ public class AuthServices {
         }
     }
 
-    public AuthDTO sendOTPByEmail(AuthDTO data) throws jakarta.mail.MessagingException {
-        Optional<User> optionalUser = usersRepo.findByEmail(data.getEmail());
+    // public AuthDTO sendOTPByEmail(AuthDTO data) throws jakarta.mail.MessagingException {
+    //     Optional<User> optionalUser = usersRepo.findByEmail(data.getEmail());
+    //     System.err.println("Error attraper  : " + optionalUser);
 
+    //     if (optionalUser.isEmpty()) {
+    //         AuthDTO response = new AuthDTO();
+    //         response.setStatus(HttpStatus.NOT_FOUND.value());
+    //         response.setMessage("Cet email n'existe pas. Veuillez fournir un email valide.");
+    //         return response;
+    //     }
+
+
+
+    //     User user = optionalUser.get();
+
+    //     int otp = generateOTP();
+    //     String otpString = String.valueOf(otp);
+
+    //     user.setOtp(otp);
+    //     usersRepo.save(user);
+
+    //     emailService.sendEmail(data.getEmail(), otpString);
+
+    //     AuthDTO response = new AuthDTO();
+    //     response.setOtp(otp);
+    //     response.setStatus(200);
+    //     response.setMessage("Veuillez consulter votre email, un code de validation vous a été transmis. Ce code expirera dans 3 minutes.");
+    //     return response;
+    // }
+
+
+    public AuthDTO sendOTPByEmail(AuthDTO data) throws MessagingException {
+        // Recherche de l'utilisateur par email
+        Optional<User> optionalUser = usersRepo.findByEmail(data.getEmail());
+        
+        // Vérification si l'utilisateur existe
         if (optionalUser.isEmpty()) {
             AuthDTO response = new AuthDTO();
             response.setStatus(HttpStatus.NOT_FOUND.value());
-            response.setMessage("Cet email n'existe pas dans la base de données.");
+            response.setMessage("Cet email n'existe pas. Veuillez fournir un email valide.");
             return response;
         }
-
+    
+        // Récupération de l'utilisateur
         User user = optionalUser.get();
+        
+        // Génération d'un OTP
         int otp = generateOTP();
-        String otpString = String.valueOf(otp);
-
         user.setOtp(otp);
-        usersRepo.save(user);
-
-        emailService.sendEmail(data.getEmail(), otpString);
-
+        usersRepo.save(user); // Enregistrement de l'OTP
+    
+        // Envoi de l'email
+        emailService.sendEmail(data.getEmail(), String.valueOf(otp));
+    
+        // Préparation de la réponse
         AuthDTO response = new AuthDTO();
-        response.setOtp(otp);
+        response.setOtp(otp); // Si vous souhaitez retourner l'OTP
+        response.setStatus(HttpStatus.OK.value());
         response.setMessage("Veuillez consulter votre email, un code de validation vous a été transmis. Ce code expirera dans 3 minutes.");
+        
         return response;
     }
+    
 
     // Méthode pour générer un OTP
     private int generateOTP() {
@@ -158,6 +198,7 @@ public class AuthServices {
     }
 
     public AuthDTO verifyOTP(AuthDTO data) {
+
         Optional<User> userOptional = usersRepo.findByEmail(data.getEmail());
         User user = userOptional.orElseThrow(() -> new EntityNotFoundException("Utilisateur non trouvé"));
 

@@ -16,6 +16,9 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     long countByGenre(Gender genre);  // Assurez-vous que la méthode est correctement définie
 
+    @Query(value = "SELECT * FROM users WHERE email = ?1", nativeQuery = true)
+    Optional<User> findUserByEmail(String email);
+    
     Optional<User> findByEmail(String email);
     boolean existsByEmail(String email);
     Optional<User> findByUsername(String username);
