@@ -48,6 +48,12 @@ public class TaskController {
         return new ResponseEntity<>(response, HttpStatus.CREATED);
     }
 
+    @PutMapping("/tasks/{taskCode}/difficulty")
+    public ResponseEntity<TaskDTO> updateTaskDifficulty(@PathVariable String taskCode, @RequestBody TaskDTO taskDTO) {
+        TaskDTO updatedTask = taskService.updateDifficulty(taskCode, taskDTO);
+        return ResponseEntity.ok(updatedTask);
+    }
+
     @GetMapping("/tasks/fetchTaskById/{id}")
     public ResponseEntity<BaseResponse<TaskDTO>> getTaskById(@PathVariable Long id) {
         TaskDTO task = taskService.getTaskById(id);

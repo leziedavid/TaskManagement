@@ -414,6 +414,34 @@ public class UserService {
         userRoleDTO.setRole(user.getRole());
         return userRoleDTO;
     }
+
+    // public List<String> getEmailsByIds(List<Long> userIds) {
+    //     return userRepository.findEmailsByIds(userIds);
+    // }
+
+
+    public List<String> getEmailsByIds(List<Long> userIds) {
+        // Vérifiez si la liste des IDs n'est pas vide
+        if (userIds == null || userIds.isEmpty()) {
+            return List.of(); // Retourne une liste vide si aucune ID n'est fournie
+        }
+        return userRepository.findEmailsByIds(userIds);
+    }
+
+    public String getEmailById(Long userId) {
+        // Vérifiez si l'ID de l'utilisateur n'est pas nul
+        if (userId == null) {
+            return null; // Retourne null si l'ID n'est pas fourni
+        }
+        return userRepository.findEmailById(userId); // Méthode à définir dans UserRepository
+    }
+    public String findNameById(Long userId) {
+        // Vérifiez si l'ID de l'utilisateur n'est pas nul
+        if (userId == null) {
+            return null; // Retourne null si l'ID n'est pas fourni
+        }
+        return userRepository.findFullNameById(userId); // Méthode à définir dans UserRepository
+    }
     
 
 }

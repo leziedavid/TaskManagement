@@ -49,7 +49,8 @@ public class FileStorageService {
     @Autowired
     private ObservationRepository observationRepository;
 
-    public String uploadFileWithTitle(MultipartFile file, String title) throws IOException {
+    public String 
+    uploadFileWithTitle(MultipartFile file, String title) throws IOException {
         
         if (file.isEmpty()) {
             throw new IllegalArgumentException("File is empty");

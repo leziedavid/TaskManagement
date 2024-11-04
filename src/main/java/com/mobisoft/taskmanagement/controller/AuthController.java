@@ -7,7 +7,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -41,6 +43,24 @@ public class AuthController {
         return ResponseEntity.ok(response);
     }
 
+    @PutMapping("/auth/{userId}/password")
+    public ResponseEntity<BaseResponse<AuthDTO>> changePassword(
+            @PathVariable Long userId,
+            @RequestBody AuthDTO authDTO) throws MessagingException {
+
+        // Appel au service pour changer le mot de passe
+        AuthDTO responseAuthDTO = authServices.changePassword(userId, authDTO.getPassword());
+
+        // Créer la réponse avec responseAuthDTO
+        BaseResponse<AuthDTO> response = new BaseResponse<>(
+                responseAuthDTO.getStatus(),
+                responseAuthDTO.getMessage(),
+                responseAuthDTO
+        );
+
+        return ResponseEntity.ok(response);
+    }
+
     @PostMapping("/auth/refresh")
     public ResponseEntity<BaseResponse<AuthDTO>> refreshToken(@Validated @RequestBody AuthDTO req) {
         AuthDTO authDTO = authServices.refreshToken(req);
@@ -55,16 +75,12 @@ public class AuthController {
             AuthDTO authDTO = authServices.sendOTPByEmail(data);
             BaseResponse<AuthDTO> response = new BaseResponse<>(authDTO.getStatus(), authDTO.getMessage(), authDTO);
             return ResponseEntity.ok(response);
-        } catch (MessagingException e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(new BaseResponse<>(HttpStatus.INTERNAL_SERVER_ERROR.value(), "Erreur d'envoi d'email.", null));
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(new BaseResponse<>(HttpStatus.INTERNAL_SERVER_ERROR.value(), "Une erreur inattendue est survenue.", null));
+            // Gérer toutes les exceptions de manière générique
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new BaseResponse<>(HttpStatus.INTERNAL_SERVER_ERROR.value(), "Une erreur est survenue.", null));
         }
     }
-
-
+    
 
     // @PostMapping("/sendOtp")
     // public ResponseEntity<BaseResponse<AuthDTO>> sendOTPByEmail(@RequestBody AuthDTO data) throws MessagingException{

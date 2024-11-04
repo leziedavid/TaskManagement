@@ -2,55 +2,97 @@ package com.mobisoft.taskmanagement.service;
 
 import java.io.File;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.FileSystemResource;
+import org.springframework.mail.MailException;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.javamail.JavaMailSenderImpl;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.mail.javamail.MimeMessagePreparator;
 import org.springframework.stereotype.Service;
 
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.InternetAddress;
-import jakarta.mail.internet.MimeMessage; // Assurez-vous d'importer java.io.File
+import jakarta.mail.internet.MimeMessage;
 
 @Service
 public class EmailServiceImpl implements EmailService {
 
-    @Autowired
-    private JavaMailSender javaMailSender; // Injection correcte du JavaMailSender
+    private final JavaMailSender mailSender;
+
+    public EmailServiceImpl(JavaMailSender mailSender) {
+        this.mailSender = mailSender;
+    }
 
     @Override
-    public void sendEmail(String email, String otp) throws MessagingException {
-        // Log pour débugger
-        System.out.println("Envoi d'un email à : " + email);
-        
+    public void sendEmail(String email, String otp) {
         MimeMessagePreparator preparator = mimeMessage -> {
             mimeMessage.setRecipient(MimeMessage.RecipientType.TO, new InternetAddress(email));
-            mimeMessage.setFrom(new InternetAddress("contact@tarafe.com"));
+            mimeMessage.setFrom(new InternetAddress("mobitask@mobisoft.ci"));
             mimeMessage.setSubject("Code OTP pour réinitialisation de mot de passe");
             mimeMessage.setText("Votre code OTP est : " + otp + ". Ce code expirera dans 3 minutes.");
-    
-            // Gestion des pièces jointes
-            String attachmentPath = ""; // chemin de la pièce jointe
+
+            // Ajout d'une pièce jointe, si nécessaire
+            String attachmentPath = ""; // Remplacer par le chemin du fichier si nécessaire
             if (!attachmentPath.isEmpty()) {
-                File file = new File(attachmentPath);
-                FileSystemResource fileResource = new FileSystemResource(file);
-    
-                if (fileResource.exists() && fileResource.isFile() && file.length() > 0) {
+                FileSystemResource file = new FileSystemResource(new File(attachmentPath));
+                if (file.exists() && file.getFile().length() > 0) {
                     MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true);
-                    helper.addAttachment(fileResource.getFilename(), fileResource);
-                    helper.setText("Votre code OTP est : " + otp + ". Ce code expirera dans 3 minutes.", true);
-                } else {
-                    System.err.println("Le fichier est vide ou introuvable : " + attachmentPath);
+                    helper.addAttachment(file.getFilename(), file);
                 }
             }
         };
-    
+
+        // Envoi du message avec gestion des exceptions
         try {
-            javaMailSender.send(preparator);
-        } catch (Exception e) {
-            throw new MessagingException("Erreur lors de l'envoi de l'email.", e);
+            mailSender.send(preparator);
+        } catch (MailException e) {
+            // Gérer les exceptions d'envoi d'email
+            e.printStackTrace(); // Journaliser l'erreur lors de l'envoi de l'email
         }
     }
+
+    @Override
+    public void sendEmail2(String email, String otp) {
+        // Create an instance of Java Mail sender
+        JavaMailSenderImpl mailSender = new JavaMailSenderImpl();
+
+
+        mailSender.setHost("mail.mobisoft.ci"); // Replace with your SMTP server host
+        mailSender.setPort(465);  // Replace with your SMTP port
+        mailSender.setUsername("mobitask@mobisoft.ci"); // Replace with your SMTP username
+        mailSender.setPassword("_qpv0M044"); // Replace with your SMTP password
+
+
+        JavaMailSender javaMailSender = mailSender;
+        MimeMessagePreparator preparator = mimeMessage -> {
+            mimeMessage.setRecipient(MimeMessage.RecipientType.TO, new InternetAddress(email));
+            mimeMessage.setFrom(new InternetAddress("mobitask@mobisoft.ci"));
+            mimeMessage.setSubject("Code OTP pour réinitialisation de mot de passe");
+            mimeMessage.setText("Votre code OTP est : " + otp + ". Ce code expirera dans 3 minutes.");
+
+            String attachment = "";
+            // String attachment = "uploads/names.csv";
+
+            try {
+                FileSystemResource file = new FileSystemResource(new File(attachment));
+
+                if (file.exists() && file.getFile().length() > 0) {
+                    // Check if file exists and is not empty
+                    MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true);
+                    helper.addAttachment(file.getFilename(), file);
+                    helper.setText("", true);
+
+                } else {
+                    // System.out.println("File is empty or not found: " + attachment);
+                }
+
+            } catch (MessagingException ex) {
+            }
+        };
+
+        javaMailSender.send(preparator);
+    }
+
+
 
 }

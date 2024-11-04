@@ -1,5 +1,10 @@
 package com.mobisoft.taskmanagement.service;
 
+import java.io.OutputStream;
+import java.net.HttpURLConnection;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.URL;
 import java.util.List;
 import java.util.Optional;
 
@@ -9,11 +14,11 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.stereotype.Service;
+import org.springframework.stereotype.Service; // Importer l'énumération Role
 
 import com.mobisoft.taskmanagement.dto.AuthDTO;
 import com.mobisoft.taskmanagement.dto.UserDTO;
-import com.mobisoft.taskmanagement.entity.User; // Importer l'énumération Role
+import com.mobisoft.taskmanagement.entity.User;
 import com.mobisoft.taskmanagement.repository.UserRepository;
 
 import jakarta.mail.MessagingException;
@@ -139,8 +144,6 @@ public class AuthServices {
     //         return response;
     //     }
 
-
-
     //     User user = optionalUser.get();
 
     //     int otp = generateOTP();
@@ -157,6 +160,7 @@ public class AuthServices {
     //     response.setMessage("Veuillez consulter votre email, un code de validation vous a été transmis. Ce code expirera dans 3 minutes.");
     //     return response;
     // }
+
 
 
     public AuthDTO sendOTPByEmail(AuthDTO data) throws MessagingException {
@@ -179,18 +183,64 @@ public class AuthServices {
         user.setOtp(otp);
         usersRepo.save(user); // Enregistrement de l'OTP
     
-        // Envoi de l'email
-        emailService.sendEmail(data.getEmail(), String.valueOf(otp));
+        // Préparation des paramètres pour l'envoi de l'email
+        String senderId = "mobitask@mobisoft.ci";
+        String subject = "Code OTP pour réinitialisation de mot de passe";
+        String message = "Votre code OTP est : " + otp + ". Ce code expirera dans 3 minutes.";
+        String[] receivers = { data.getEmail() };
     
+        // Envoi de l'email via l'API
+        sendEmailViaApi(senderId, user.getUserId(), subject, receivers, message);
+        
         // Préparation de la réponse
         AuthDTO response = new AuthDTO();
         response.setOtp(otp); // Si vous souhaitez retourner l'OTP
+        response.setUserId(user.getUserId()); // Récupération de l'ID de l'utilisateur
         response.setStatus(HttpStatus.OK.value());
         response.setMessage("Veuillez consulter votre email, un code de validation vous a été transmis. Ce code expirera dans 3 minutes.");
         
         return response;
     }
     
+    private void sendEmailViaApi(String senderId, Long userId, String subject, String[] receivers, String message) {
+        try {
+            // Création de l'URI
+            URI uri = new URI("http://84.247.170.134:7051/api/v1/broker/publish/email");
+            URL url = uri.toURL(); // Convertir l'URI en URL
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            
+            // Configuration de la connexion
+            conn.setRequestMethod("POST");
+            conn.setRequestProperty("Accept", "*/*");
+            conn.setRequestProperty("Content-Type", "application/json");
+            conn.setDoOutput(true);
+    
+            // Corps de la requête
+            String jsonInputString = String.format(
+                "{\"senderId\": \"%s\", \"userId\": %d, \"resourceIds\": \"1,1,4\", \"subject\": \"%s\", \"receivers\": [\"%s\"], \"message\": \"%s\"}",
+                senderId, userId, subject, String.join("\",\"", receivers), message
+            );
+    
+            // Envoi de la requête
+            try (OutputStream os = conn.getOutputStream()) {
+                byte[] input = jsonInputString.getBytes("utf-8");
+                os.write(input, 0, input.length);
+            }
+    
+            // Vérification de la réponse
+            int responseCode = conn.getResponseCode();
+            if (responseCode != HttpURLConnection.HTTP_OK) {
+                // Gérer l'erreur si besoin
+                System.out.println("Erreur lors de l'envoi de l'email : " + responseCode);
+            }
+        } catch (URISyntaxException e) {
+            e.printStackTrace(); // Gérer l'exception pour URI
+        } catch (Exception e) {
+            e.printStackTrace(); // Gérer l'exception générale
+        }
+    }
+    
+
 
     // Méthode pour générer un OTP
     private int generateOTP() {
@@ -280,6 +330,28 @@ public class AuthServices {
             return response;
         }
     }
+
+
+
+    public AuthDTO changePassword(Long userId, String newPassword) {
+        // Vérification de la longueur du mot de passe
+        if (newPassword.length() < 8) {
+            throw new IllegalArgumentException("Le mot de passe doit contenir au moins 8 caractères.");
+        }
+        // Trouver l'utilisateur par ID
+        User user = usersRepo.findById(userId).orElseThrow(() -> new EntityNotFoundException("Utilisateur non trouvé avec l'ID : " + userId));
+
+        // Modifier le mot de passe (n'oubliez pas de le hacher)
+        user.setPassword(newPassword);
+        usersRepo.save(user); // Utilisation de usersRepo
+
+        // Créer un AuthDTO pour la réponse
+        AuthDTO responseAuthDTO = new AuthDTO();
+        responseAuthDTO.setStatus(201);
+        responseAuthDTO.setMessage("Mot de passe changé avec succès.");
+        return responseAuthDTO; // Retourner le DTO
+    }
+    
 
     // Getters et Setters pour les autres dépendances
     public JWTUtils getJwtUtils() {

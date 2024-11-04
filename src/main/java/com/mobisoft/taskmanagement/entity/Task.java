@@ -46,6 +46,9 @@ public class Task {
 
     private String taskNombreJours;
     private String taskNombreHeurs;
+    private String difficulte;
+    @Column(name = "level", columnDefinition = "integer default 0")
+    private Integer level= 0;
 
     @JsonFormat(pattern = "yyyy-MM-dd")
     private LocalDateTime taskStartDate;

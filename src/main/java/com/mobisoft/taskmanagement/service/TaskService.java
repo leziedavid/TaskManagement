@@ -14,6 +14,7 @@ import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import com.mobisoft.taskmanagement.dto.AbonnementDTO;
 import com.mobisoft.taskmanagement.dto.ActionDTO;
 import com.mobisoft.taskmanagement.dto.ObservationDTO;
 import com.mobisoft.taskmanagement.dto.TaskDTO;
@@ -27,6 +28,7 @@ import com.mobisoft.taskmanagement.entity.Role;
 import com.mobisoft.taskmanagement.entity.State;
 import com.mobisoft.taskmanagement.entity.Task;
 import com.mobisoft.taskmanagement.entity.User;
+import com.mobisoft.taskmanagement.repository.AbonnementRepository;
 import com.mobisoft.taskmanagement.repository.ActionRepository;
 import com.mobisoft.taskmanagement.repository.ObservationRepository;
 import com.mobisoft.taskmanagement.repository.ProjectRepository;
@@ -61,6 +63,10 @@ public class TaskService {
 
     private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSS");
 
+    @Autowired
+    private AbonnementRepository abonnementRepository;
+
+    
     public TaskDTO createTask(TaskDTO taskDTO) {
 
         try {
@@ -87,6 +93,27 @@ public class TaskService {
             throw new EntityNotFoundException("Erreur lors de la création de la tâche: " + e.getMessage());
         }
     }
+
+    public TaskDTO updateDifficulty(String taskCode, TaskDTO taskDTO) {
+        try {
+            // Récupérer la tâche existante par son code
+            Task existingTask = taskRepository.findByTaskCode(taskCode)
+                .orElseThrow(() -> new EntityNotFoundException("Tâche non trouvée avec le code: " + taskCode));
+    
+            // Mettre à jour les champs difficulté et niveau
+            existingTask.setDifficulte(taskDTO.getDifficulte());
+            existingTask.setLevel(taskDTO.getLevel());
+    
+            // Enregistrer la tâche mise à jour
+            Task updatedTask = taskRepository.save(existingTask);
+    
+            return convertToDTO(updatedTask);
+        } catch (Exception e) {
+            throw new EntityNotFoundException("Erreur lors de la mise à jour de la tâche: " + e.getMessage());
+        }
+    }
+    
+
 
     public TaskDTO getTaskById(Long taskId) {
         Optional<Task> optionalTask = taskRepository.findById(taskId);
@@ -304,6 +331,9 @@ public class TaskService {
         taskDTO.setTaskNombreHeurs(task.getTaskNombreHeurs());
         taskDTO.setTaskNombreJours(task.getTaskNombreJours());
 
+        taskDTO.setDifficulte(task.getDifficulte());
+        taskDTO.setLevel(task.getLevel());
+
         LocalDateTime taskStartDate = task.getTaskStartDate();
         String taskStartDateAsString = (taskStartDate != null) ? taskStartDate.toString() : null;
         taskDTO.setTaskStartDate(taskStartDateAsString);
@@ -368,11 +398,6 @@ public class TaskService {
 
         LocalDateTime taskEndDate = LocalDateTime.parse(taskDTO.getTaskEndDate());
         task.setTaskEndDate(taskEndDate);
-
-        // Parser la chaîne en LocalDateTime
-        // LocalDateTime alerteDate = LocalDateTime.parse(taskDTO.getAlerteDate(), FORMATTER);
-        // task.setAlerteDate(alerteDate);
-        // Mise à jour de la date d'alerte (ajoutée dans convertToEntity)
         if (taskDTO.getAlerteDate() != null && !taskDTO.getAlerteDate().isEmpty()) {
             LocalDateTime alerteDate = LocalDateTime.parse(taskDTO.getAlerteDate(), FORMATTER);
             task.setAlerteDate(alerteDate);
@@ -445,6 +470,8 @@ public class TaskService {
             Task task = optionalTask.get();
             TaskDTO taskDTO = convertToDTO(task);
 
+            // System.out.println(task);
+
             // Retrieve actions
             List<ActionDTO> actionDTOs = actionRepository.findByTaskTaskId(task.getTaskId())
                     .stream()
@@ -509,11 +536,29 @@ public class TaskService {
                     ? List.of(convertToUserDTO(task.getAssigned()))
                     : List.of();
 
+
+            List<AbonnementDTO> abonnementDTOs = abonnementRepository.findByIdTask(task.getTaskId())
+                    .stream()
+                    .map(abonnement -> {
+                        AbonnementDTO abonnementDTO = new AbonnementDTO();
+                        abonnementDTO.setAbonnementId(abonnement.getAbonnementId());
+                        abonnementDTO.setIdTask(abonnement.getIdTask());
+                        abonnementDTO.setUserId(abonnement.getUserId());
+                        abonnementDTO.setEmail(abonnement.getEmail());
+                        abonnementDTO.setName(abonnement.getName());
+                        // abonnementDTO.setCreatedAt(abonnement.getCreatedAt().toString());
+                        return abonnementDTO;
+                    })
+                    .collect(Collectors.toList());
+
+
             // Set DTOs
             taskDetailsDTO.setTasks(List.of(taskDTO)); // Wrap taskDTO in a list
             taskDetailsDTO.setActions(actionDTOs);
             taskDetailsDTO.setObservations(observationDTOs);
             taskDetailsDTO.setAssignedUsers(assignedUserDTOs);
+            taskDetailsDTO.setAbonnements(abonnementDTOs); // Add this line to set subscriptions
+
         }
 
         return taskDetailsDTO;

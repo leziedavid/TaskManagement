@@ -6,6 +6,7 @@ public interface EmailService {
 
     // void sendEmail(String email, String otp);
     void sendEmail(String email, String otp) throws MessagingException; // Déclarez l'exception ici
+    void sendEmail2(String email, String otp) throws MessagingException; // Déclarez l'exception ici
 
 
 }

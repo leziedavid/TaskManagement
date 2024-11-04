@@ -31,7 +31,16 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     @Query(value = "SELECT u.* FROM users u " +"JOIN department_users du ON u.user_id = du.user_id " + "WHERE du.department_id = :departmentId", nativeQuery = true)
     List<User> findUsersByDepartmentId(@Param("departmentId") Long departmentId);
+    
+    
+    @Query("SELECT u.email FROM User u WHERE u.id IN :userIds")
+    List<String> findEmailsByIds(List<Long> userIds);
 
+    @Query("SELECT u.email FROM User u WHERE u.id = :userId")
+    String findEmailById(Long userId);
+
+    @Query("SELECT CONCAT(u.firstname, ' ', u.lastname) FROM User u WHERE u.id = :userId")
+    String findFullNameById(Long userId);
 
 
 }

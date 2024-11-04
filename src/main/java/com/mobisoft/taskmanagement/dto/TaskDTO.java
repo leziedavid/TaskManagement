@@ -45,6 +45,9 @@ public class TaskDTO {
     private Integer isValides;
     private String alerteDate;
 
+    private String difficulte;
+    private Integer level;
+
     private Long projectId;  // Vous pouvez garder cela si nécessaire pour l'ID du projet
     private String colorCode;
 

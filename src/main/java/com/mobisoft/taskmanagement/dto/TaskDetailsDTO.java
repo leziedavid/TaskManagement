@@ -8,7 +8,15 @@ public class TaskDetailsDTO {
     private List<ActionDTO> actions;      // Correction : devrait contenir les actions, pas les tâches
     private List<ObservationDTO> observations;
     private List<UserDTO> assignedUsers;  // Nouvelle propriété pour les utilisateurs assignés
+    private List<AbonnementDTO> abonnements; // Nouvelle propriété pour les abonnements
 
+    public List<AbonnementDTO> getAbonnements() {
+        return abonnements;
+    }
+
+    public void setAbonnements(List<AbonnementDTO> abonnements) {
+        this.abonnements = abonnements;
+    }
     // Getters and Setters
 
     /**
