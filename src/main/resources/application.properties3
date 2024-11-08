@@ -23,15 +23,14 @@ spring.servlet.multipart.max-request-size=10000MB
 # Configuration de l'API Swagger
 # springdoc.api-docs.path=/api-docs
 springdoc.swagger-ui.disable-default-url=true
+
 # Configuration pour l'envoi d'emails via Gmail SMTP
-spring.mail.host=mail.tarafe.com
+spring.mail.host=mail.mobisoft.ci
 spring.mail.port=465
 spring.mail.username=mobitask@mobisoft.ci
-spring.mail.password=mp-Tarafe@2024
+spring.mail.password=_qpv0M044
 spring.mail.properties.mail.smtp.auth=true
 spring.mail.properties.mail.smtp.starttls.enable=true
-; spring.mail.properties.mail.smtp.ssl.enable=true
+spring.mail.properties.mail.smtp.ssl.enable=true
+spring.mail.properties.mail.smtp.ssl.trust=mail.mobisoft.ci
 spring.mail.properties.mail.debug=true
-
-    # username: hackmalli2020@gmail.com
-    # password: meyacucmrraayazl

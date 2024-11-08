@@ -76,7 +76,7 @@ public class TaskService {
 
             // Créer une notification pour la nouvelle tâche
             String title = "Nouvelle Tâche Crée";
-            String message = "Une nouvelle tâche a été créée avec l'ID: " + savedTask.getTaskId();
+            String message = "Une nouvelle tâche a été crée avec l'ID: " + savedTask.getTaskId();
             Long entityId = savedTask.getTaskId();
             Long codeProject = savedTask.getProjectId();
             String entityType = "Task";
